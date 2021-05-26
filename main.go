@@ -31,14 +31,14 @@ import (
 // packet scheduling
 
 // Note: The main func here is an example of an app using the library, so the code in there should
-// not part of the libary. We could also move this part into examples folder
+// not part of the library. We could also move this part into examples folder
 
 // Connection States, need to be redefined/extended
 const (
-	CON_IDLE        = 0
-	CON_ACTIVE      = 1
-	CON_CLOSED      = 2
-	CON_HANDSHAKING = 3
+	CONN_IDLE        = 0
+	CONN_ACTIVE      = 1
+	CONN_CLOSED      = 2
+	CONN_HANDSHAKING = 3
 )
 
 // This represents a multipath socket that can handle 1-n paths.
@@ -47,43 +47,42 @@ const (
 // that handles multiple MPPeerSocks
 type MPPeerSock struct {
 	Peer                    string
-	OnPathsetChange         chan []string // TODO: Design a real struct for this, string is only dummy
-	Pathset                 []string      // TODO: Design a real struct for this, string is only dummy
-	Connections             []MonitoredConn
-	PathSelectionProperties []string // TODO: Design a real struct for this, string is only dummy
+	OnPathsetChange         chan []string   // TODO: Design a real struct for this, string is only dummy
+	Pathset                 []string        // TODO: Design a real struct for this, string is only dummy
+	Connections             []MonitoredConn //
+	PathSelectionProperties []string        // TODO: Design a real struct for this, string is only dummy
 }
 
 // This one extends a SCION connection to collect metrics for each connection
 // Since a connection has always one path, the metrics are also path metrics
 type MonitoredConn struct {
-	internalCon net.Conn // Is later SCION conn, or with TAPS a connection independently of the network/transport
-	Path        string   // string is only a dummy here, needs to be a real path interface
-	State       int      // See Connection States
+	internalConn net.Conn // Is later SCION conn, or with TAPS a connection independently of the network/transport
+	Path         string   // string is only a dummy here, needs to be a real path interface
+	State        int      // See Connection States
 }
 
-// This simply wraps con.Read and will later collect metrics
-func (mCon MonitoredConn) Read(b []byte) (int, error) {
-	n, err := mCon.internalCon.Read(b)
+// This simply wraps conn.Read and will later collect metrics
+func (mConn MonitoredConn) Read(b []byte) (int, error) {
+	n, err := mConn.internalConn.Read(b)
 	return n, err
 }
 
-// This simply wraps con.Write and will later collect metrics
-func (mCon MonitoredConn) Write(b []byte) (int, error) {
-	n, err := mCon.internalCon.Write(b)
+// This simply wraps conn.Write and will later collect metrics
+func (mConn MonitoredConn) Write(b []byte) (int, error) {
+	n, err := mConn.internalConn.Write(b)
 	return n, err
 }
 
 func newMonitoredConn(path string) (*MonitoredConn, error) {
-
 	// Here need to be done some SCION or TAPS stuff
 	conn, err := net.Dial("scion", path)
 	if err != nil {
 		return nil, err
 	}
 	return &MonitoredConn{
-		Path:        path,
-		internalCon: conn,
-		State:       CON_HANDSHAKING,
+		Path:         path,
+		internalConn: conn,
+		State:        CONN_HANDSHAKING,
 	}, nil
 }
 
@@ -95,13 +94,12 @@ func newMPSock(peer string) *MPPeerSock {
 }
 
 func (mp MPPeerSock) closeConn(conn MonitoredConn) {
-	conn.internalCon.Close()
+	conn.internalConn.Close()
 }
 
 // A first approach could be to open connections over all
 // Paths to later reduce time effort for switching paths
 func (mp MPPeerSock) connect() ([]MonitoredConn, error) {
-
 	go func() {
 		// Do some operations on the metrics here
 		// and then maybe fire pathset change event
@@ -128,7 +126,6 @@ func (mp MPPeerSock) dialAll(path []string) ([]MonitoredConn, error) {
 }
 
 func main() {
-
 	peers := []string{"peer1", "peer2", "peer3"} // Later real addresses
 	manualSelection := false
 
@@ -137,7 +134,7 @@ func main() {
 
 		// TODO: We could remove the return of the connections for
 		// the connect and dial methods since the socket keeps
-		// them, but maybe its easier for applications, espacially for dialPath
+		// them, but maybe its easier for applications, especially for dialPath
 		_, err := mpSock.connect()
 		if err != nil {
 			return
@@ -167,13 +164,13 @@ func main() {
 					// This example is not intended to make sense, but to show
 					// how interacting with the socket could work
 					if len(newPaths) > 0 {
-						con, err := mpSock.dialPath(newPaths[0])
+						conn, err := mpSock.dialPath(newPaths[0])
 						if err != nil {
 							return
 						}
 
-						if con.State == CON_HANDSHAKING {
-							fmt.Printf("Connection for path %s is now handshaking", con.Path)
+						if conn.State == CONN_HANDSHAKING {
+							fmt.Printf("Connection for path %s is now handshaking", conn.Path)
 						}
 					}
 				} else {
@@ -184,15 +181,12 @@ func main() {
 				}
 
 				// The socket keeps always an up to date list of all connections
-				for _, con := range mpSock.Connections {
-					if con.State == CON_ACTIVE {
-						fmt.Printf("Connection for path %s is active", con.Path)
+				for _, conn := range mpSock.Connections {
+					if conn.State == CONN_ACTIVE {
+						fmt.Printf("Connection for path %s is active", conn.Path)
 					}
-
 				}
-
 			}
-
 		}()
 	}
 }
