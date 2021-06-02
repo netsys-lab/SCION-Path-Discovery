@@ -1,8 +1,9 @@
-package main
+package smp
 
 import (
-	"fmt"
 	"net"
+
+	"github.com/netsec-ethz/scion-apps/pkg/appnet"
 )
 
 // Pathselection/Multipath library draft 0.0.1
@@ -73,9 +74,10 @@ func (mConn MonitoredConn) Write(b []byte) (int, error) {
 	return n, err
 }
 
-func newMonitoredConn(path string) (*MonitoredConn, error) {
+func NewMonitoredConn(path string) (*MonitoredConn, error) {
 	// Here need to be done some SCION or TAPS stuff
-	conn, err := net.Dial("scion", path)
+	conn, err := appnet.Dial(path)
+	// conn, err := net.Dial("scion", path)
 	if err != nil {
 		return nil, err
 	}
@@ -86,20 +88,20 @@ func newMonitoredConn(path string) (*MonitoredConn, error) {
 	}, nil
 }
 
-func newMPSock(peer string) *MPPeerSock {
+func NewMPSock(peer string) *MPPeerSock {
 	return &MPPeerSock{
 		Peer:            peer,
 		OnPathsetChange: make(chan []string),
 	}
 }
 
-func (mp MPPeerSock) closeConn(conn MonitoredConn) {
+func (mp MPPeerSock) CloseConn(conn MonitoredConn) {
 	conn.internalConn.Close()
 }
 
 // A first approach could be to open connections over all
 // Paths to later reduce time effort for switching paths
-func (mp MPPeerSock) connect() ([]MonitoredConn, error) {
+func (mp MPPeerSock) Connect() ([]MonitoredConn, error) {
 	go func() {
 		// Do some operations on the metrics here
 		// and then maybe fire pathset change event
@@ -109,84 +111,18 @@ func (mp MPPeerSock) connect() ([]MonitoredConn, error) {
 }
 
 // TODO: Close all connections gracefully...
-func (mp MPPeerSock) disconnect() error {
+func (mp MPPeerSock) Disconnect() error {
 	return nil
 }
 
 // This one should "activate" the connection over the respective path
 // or create one if its not there yet
-func (mp MPPeerSock) dialPath(path string) (*MonitoredConn, error) {
-	return newMonitoredConn(path)
+func (mp MPPeerSock) DialPath(path string) (*MonitoredConn, error) {
+	return NewMonitoredConn(path)
 }
 
 // Could call dialPath for all paths. However, not the connections over included
 // should be idled or closed here
-func (mp MPPeerSock) dialAll(path []string) ([]MonitoredConn, error) {
+func (mp MPPeerSock) DialAll(path []string) ([]MonitoredConn, error) {
 	return []MonitoredConn{}, nil
-}
-
-func main() {
-	peers := []string{"peer1", "peer2", "peer3"} // Later real addresses
-	manualSelection := false
-
-	for _, peer := range peers {
-		mpSock := newMPSock(peer)
-
-		// TODO: We could remove the return of the connections for
-		// the connect and dial methods since the socket keeps
-		// them, but maybe its easier for applications, especially for dialPath
-		_, err := mpSock.connect()
-		if err != nil {
-			return
-		}
-		defer mpSock.disconnect()
-
-		// Maybe we find a cooler approach here...
-		// The basic idea is to have a function that can react to pathSetChanges
-		// and e.g. always use all paths that are returned from the socket
-		// or only a subset
-		go func() {
-			for {
-				// Note: This is probably the most important line in this draft.
-				// Before the lib fires this event, a lot of magic needs to be done
-				// First idea was to use a channel to wait for an event
-				// Maybe we can find a more elegant way instead of this for loop to wait for the
-				// OnPathsetChange message
-				newPaths := <-mpSock.OnPathsetChange
-
-				// Manual Selection is only for show purposes...
-				if manualSelection {
-					// Here we could close the last connection (maybe when they are sorted somehow)
-					if len(mpSock.Connections) > 0 {
-						mpSock.closeConn(mpSock.Connections[len(mpSock.Connections)-1])
-					}
-					// And use the first path returned to open a new one.
-					// This example is not intended to make sense, but to show
-					// how interacting with the socket could work
-					if len(newPaths) > 0 {
-						conn, err := mpSock.dialPath(newPaths[0])
-						if err != nil {
-							return
-						}
-
-						if conn.State == CONN_HANDSHAKING {
-							fmt.Printf("Connection for path %s is now handshaking", conn.Path)
-						}
-					}
-				} else {
-					// This dials connections over all new paths and closes the old ones
-					// This could be wrapped in a "MPSock" struct that does also packet scheduling
-					// But we will see later...
-					_, err = mpSock.dialAll(newPaths)
-				}
-
-				// The socket keeps always an up to date list of all connections
-				for _, conn := range mpSock.Connections {
-					if conn.State == CONN_ACTIVE {
-						fmt.Printf("Connection for path %s is active", conn.Path)
-					}
-				}
-			}
-		}()
-	}
 }
