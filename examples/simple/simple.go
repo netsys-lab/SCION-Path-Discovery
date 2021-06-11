@@ -7,7 +7,8 @@ import (
 )
 
 func main() {
-	peers := []string{"peer1", "peer2", "peer3"} // Later real addresses
+	// peers := []string{"17-ffaa:0:1108,[127.0.0.1]:12345"} //, ""}
+	peers := []string{"19-ffaa:1:e9e,[127.0.0.1]:12345"} //, ""}
 	manualSelection := false
 
 	for _, peer := range peers {
@@ -45,14 +46,14 @@ func main() {
 					// This example is not intended to make sense, but to show
 					// how interacting with the socket could work
 					if len(newPaths) > 0 {
-						conn, err := mpSock.DialPath(newPaths[0])
+						// conn, err := mpSock.DialPath(newPaths[0])
 						if err != nil {
 							return
 						}
 
-						if conn.State == smp.CONN_HANDSHAKING {
-							fmt.Printf("Connection for path %s is now handshaking", conn.Path)
-						}
+						// if conn.State == smp.CONN_HANDSHAKING {
+						// 	fmt.Printf("Connection for path %s is now handshaking", conn.Path)
+						// }
 					}
 				} else {
 					// This dials connections over all new paths and closes the old ones
