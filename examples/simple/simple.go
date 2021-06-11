@@ -4,10 +4,14 @@ import (
 	"fmt"
 
 	"github.com/netsys-lab/scion-multipath-lib/smp"
+
+	"github.com/scionproto/scion/go/lib/snet"
 )
 
 func main() {
-	peers := []string{"peer1", "peer2", "peer3"} // Later real addresses
+
+	peer1, nil := snet.ParseUDPAddr("19-ffaa:1:e9e,[127.0.0.1]:12345")
+	peers := []*snet.UDPAddr{peer1} //, ""}
 	manualSelection := false
 
 	for _, peer := range peers {

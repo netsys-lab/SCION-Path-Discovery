@@ -1,9 +1,12 @@
 package smp
 
 import (
-	"net"
+	"context"
+	"fmt"
+	"os"
 
 	"github.com/netsec-ethz/scion-apps/pkg/appnet"
+	"github.com/scionproto/scion/go/lib/snet"
 )
 
 // Pathselection/Multipath library draft 0.0.1
@@ -47,19 +50,19 @@ const (
 // TODO: One socket that handles multiple peers? This could be done by a wrapper
 // that handles multiple MPPeerSocks
 type MPPeerSock struct {
-	Peer                    string
-	OnPathsetChange         chan []string   // TODO: Design a real struct for this, string is only dummy
-	Pathset                 []string        // TODO: Design a real struct for this, string is only dummy
-	Connections             []MonitoredConn //
-	PathSelectionProperties []string        // TODO: Design a real struct for this, string is only dummy
+	Peer                    *snet.UDPAddr
+	OnPathsetChange         chan []*snet.UDPAddr // TODO: Design a real struct for this, string is only dummy
+	Pathset                 []*snet.UDPAddr      // TODO: Design a real struct for this, string is only dummy
+	Connections             []MonitoredConn      //
+	PathSelectionProperties []string             // TODO: Design a real struct for this, string is only dummy
 }
 
 // This one extends a SCION connection to collect metrics for each connection
 // Since a connection has always one path, the metrics are also path metrics
 type MonitoredConn struct {
-	internalConn net.Conn // Is later SCION conn, or with TAPS a connection independently of the network/transport
-	Path         string   // string is only a dummy here, needs to be a real path interface
-	State        int      // See Connection States
+	internalConn *snet.Conn // Is later SCION conn, or with TAPS a connection independently of the network/transport
+	Path         *snet.UDPAddr
+	State        int // See Connection States
 }
 
 // This simply wraps conn.Read and will later collect metrics
@@ -74,24 +77,24 @@ func (mConn MonitoredConn) Write(b []byte) (int, error) {
 	return n, err
 }
 
-func NewMonitoredConn(path string) (*MonitoredConn, error) {
-	// Here need to be done some SCION or TAPS stuff
-	conn, err := appnet.Dial(path)
-	// conn, err := net.Dial("scion", path)
+func NewMonitoredConn(snet_udp_addr *snet.UDPAddr) (*MonitoredConn, error) {
+	fmt.Printf("test %s", snet_udp_addr.String())
+	conn, err := appnet.DialAddr(snet_udp_addr)
 	if err != nil {
-		return nil, err
+		fmt.Println(err)
+		os.Exit(1)
 	}
 	return &MonitoredConn{
-		Path:         path,
+		Path:         snet_udp_addr,
 		internalConn: conn,
 		State:        CONN_HANDSHAKING,
 	}, nil
 }
 
-func NewMPSock(peer string) *MPPeerSock {
+func NewMPSock(peer *snet.UDPAddr) *MPPeerSock {
 	return &MPPeerSock{
 		Peer:            peer,
-		OnPathsetChange: make(chan []string),
+		OnPathsetChange: make(chan []*snet.UDPAddr),
 	}
 }
 
@@ -102,11 +105,33 @@ func (mp MPPeerSock) CloseConn(conn MonitoredConn) {
 // A first approach could be to open connections over all
 // Paths to later reduce time effort for switching paths
 func (mp MPPeerSock) Connect() ([]MonitoredConn, error) {
-	go func() {
-		// Do some operations on the metrics here
-		// and then maybe fire pathset change event
-		mp.OnPathsetChange <- []string{"Path1", "Path2", "Path3"}
-	}()
+	// go func() {
+	snet_udp_addr := mp.Peer //appnet.ResolveUDPAddr(mp.Peer)
+	/*if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}*/
+	paths, err := appnet.DefNetwork().PathQuerier.Query(context.Background(), snet_udp_addr.IA)
+	for i := range paths {
+		fmt.Println("Path", i, ":", paths[i])
+	}
+	// sel_path, err := appnet.ChoosePathByMetric(appnet.Shortest, snet_udp_addr.IA)
+	// sel_path, err := appnet.ChoosePathInteractive(snet_udp_addr.IA)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	appnet.SetPath(snet_udp_addr, paths[0])
+	conn, err := mp.DialPath(snet_udp_addr)
+	if err != nil {
+		return nil, err
+	}
+	conn.Write([]byte("Hello World!\n"))
+	// Do some operations on the metrics here
+	// and then maybe fire pathset change event
+	newPeer, nil := snet.ParseUDPAddr("19-ffaa:1:e9e,[127.0.0.1]:12345")
+	mp.OnPathsetChange <- []*snet.UDPAddr{newPeer}
+	// }()
 	return []MonitoredConn{}, nil
 }
 
@@ -117,12 +142,24 @@ func (mp MPPeerSock) Disconnect() error {
 
 // This one should "activate" the connection over the respective path
 // or create one if its not there yet
-func (mp MPPeerSock) DialPath(path string) (*MonitoredConn, error) {
-	return NewMonitoredConn(path)
+func (mp MPPeerSock) DialPath(path *snet.UDPAddr) (*MonitoredConn, error) {
+	connection, error := NewMonitoredConn(path)
+	if error != nil {
+		return nil, error
+	}
+	return connection, nil
 }
 
 // Could call dialPath for all paths. However, not the connections over included
 // should be idled or closed here
-func (mp MPPeerSock) DialAll(path []string) ([]MonitoredConn, error) {
-	return []MonitoredConn{}, nil
+func (mp MPPeerSock) DialAll(path []*snet.UDPAddr) ([]MonitoredConn, error) {
+	MonitoredConn := make([]MonitoredConn, len(path))
+	for _, p := range path {
+		connection, error := mp.DialPath(p)
+		if error != nil {
+			return nil, error
+		}
+		MonitoredConn = append(MonitoredConn, *connection)
+	}
+	return MonitoredConn, nil
 }
