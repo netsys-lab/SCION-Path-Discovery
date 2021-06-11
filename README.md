@@ -1,1 +1,1 @@
-# SCION-Path-Discovery
+# SCION Path Discovery
