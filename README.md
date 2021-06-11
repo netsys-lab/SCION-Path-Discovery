@@ -34,5 +34,4 @@ This task consists of performance measurements for different multipath scenarios
 -	Release 1.0 version of the library
 -	Developer documentation
 
-
-
+This work is funded through the NGI0 Discovery Fund, a fund established by NLnet with financial support from the European Commission's Next Generation Internet programme, under the aegis of DG Communications Networks, Content and Technology under grant agreement No 825322 https://nlnet.nl/project/SCION-Swarm/
