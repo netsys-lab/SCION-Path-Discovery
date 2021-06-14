@@ -6,7 +6,7 @@ import (
 	"github.com/netsec-ethz/scion-apps/pkg/appnet"
 )
 
-// Pathselection/Multipath library draft 0.0.1
+// Pathselection/Multipath library draft 0.0.2
 //
 // These code fragments aim to provide an initial design for a "multipath library" that provides
 // a generic interface for path monitoring to gather information and path selection based on these information
@@ -52,6 +52,8 @@ type MPPeerSock struct {
 	Pathset                 []string        // TODO: Design a real struct for this, string is only dummy
 	Connections             []MonitoredConn //
 	PathSelectionProperties []string        // TODO: Design a real struct for this, string is only dummy
+	// 0.0.2
+	PeerPieceBitmap []byte // Represents which pieces the peer has to download
 }
 
 // This one extends a SCION connection to collect metrics for each connection
@@ -88,7 +90,7 @@ func NewMonitoredConn(path string) (*MonitoredConn, error) {
 	}, nil
 }
 
-func NewMPSock(peer string) *MPPeerSock {
+func NewMPPeerSock(peer string) *MPPeerSock {
 	return &MPPeerSock{
 		Peer:            peer,
 		OnPathsetChange: make(chan []string),
@@ -125,4 +127,59 @@ func (mp MPPeerSock) DialPath(path string) (*MonitoredConn, error) {
 // should be idled or closed here
 func (mp MPPeerSock) DialAll(path []string) ([]MonitoredConn, error) {
 	return []MonitoredConn{}, nil
+}
+
+//
+// Added in 0.0.2
+//
+
+// Read from the peer over a specific path
+// Here the socket could decide from which path to read or we have to read from all
+func (mp MPPeerSock) Read(b []byte) (int, error) {
+	return 0, nil
+}
+
+// Write to the peer over a specific path
+// Here the socket could decide over which path to write
+func (mp MPPeerSock) Write(b []byte) (int, error) {
+	return 0, nil
+}
+
+// TODO: Rethink this!
+// This represents a high level abstraction of a Bittorrent specific socket that connects to several Peers
+// It provides functions for applying a new peer set, requesting and fetching pieces,
+// and performing peer lookup
+type BittorrentMultipathSock struct {
+	Peers                   []string
+	TrackerUrl              string
+	PeerSocks               []MPPeerSock
+	Connections             []MonitoredConn //
+	PathSelectionProperties []string        // TODO: Design a real struct for this, string is only dummy
+}
+
+func NewBittorrentMultipathSock(trackerUrl string) *BittorrentMultipathSock {
+	return &BittorrentMultipathSock{
+		TrackerUrl: trackerUrl,
+	}
+}
+
+// This would need to return the peers to Bittorrent
+// So it has knowledge about all requesting peers
+func (btMpSock BittorrentMultipathSock) PeerLokup() []string {
+	btMpSock.Peers = []string{"Peer1", "Peer2", "Peer3"}
+	return btMpSock.Peers
+}
+
+// TODO: Do we want to pass a particular peer here, or should the socket decide
+// mgartner: I think the question from which peer a piece is requested is performed
+// by Bittorrent itself, but BittorrentMultipathSock decides over which path(s)
+// Furthermore, BittorrentMultipathSock could simply pass the message to the respective
+// MPPeerSock
+func (btMpSock BittorrentMultipathSock) RequestPiece(pieceIndex int, peer *string) {
+	// Send Request Message to a particular peer
+}
+
+//
+func (btMpSock BittorrentMultipathSock) ReceivePiece(pieceIndex int, result []byte) {
+	// Download the actual piece from the peer passed to RequestPiece
 }
