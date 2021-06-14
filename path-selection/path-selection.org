@@ -1,12 +1,70 @@
-#+TITLE Optimal Path Selection for Efficient Multipath Usage
+#+TITLE: Optimal Path Selection for Efficient Multipath Usage
 
-* Task
+* Task Description
   This task consists of creating a detailed concept as well as
   planning the implementation of a high performance library providing
   optimal path selection for efficient multipath usage over SCION
   capable of dealing with the high requirements of BitTorrent
 
+* Background
+  The SCION architecture offers path-awareness on inter-network
+  granularity. This is a core principle of its design. It
+  cryptographically guarantees that any network on the chosen path can
+  only be entered and exited via the exact interfaces specified in the
+  packet header for that network.
+
+  On the SCION Internet, every host, no matter whether a client or a
+  server, can select paths to a destination on its own. Given the
+  desired destination, it is the responsibility of each autonomous
+  system (AS) to provide its hosts with reasonable path
+  /options/[fn::"Path options" do not necessarily mean "ready-made
+  paths". In SCION, path servers disseminate "path segments" from
+  which the hosts then construct complete paths.], while the final
+  path /selection/ authority lies with the hosts.
+
+  For the current Internet, the "Application-Layer Traffic
+  Optimization (ALTO) Problem Statement" from RFC 5693 explores the
+  question of how to obtain and distribute the necessary information
+  for applications to perform better-than-random peer selection, i.e.,
+  to pick shorter paths over longer ones, preferring local copies of
+  the data to remote ones. By default, the standard SCION network API
+  already employs appropriate heuristics (like "path length") to
+  automatically select communication paths on behalf of an
+  application. While this represents a reasonable default, there
+  currently is no simple way for an application to detect, react and
+  adapt to changing network conditions on the fly. In particular,
+  longer, under-utilized paths might offer more useable bandwidth from
+  time to time.  
+
 * Concept
   
-#+caption: Architecture overview
-[[./pathselection3.png]]
+  
+ #+caption: Architecture overview
+ [[./pathselection3.png]]
+
+ For our purposes, "optimal path selection" in the context of
+ Bittorrent simply means /selecting the path(s) that maximize(s) the
+ bandwidth to a given remote peer/.
+
+ Our approach achieves this by actively exploring path alternatives to a
+ given peer and keeping track of the observed throughput measurements.
+
+ 
+** Address-level vs Path-level Peers
+
+
+
+   #+begin_quote
+Normally, a Bittorrent peer is represented solely by its address. This
+address could be either an IPv4, IPv6 or SCION address. Peers that are
+only represented by their address are called address-level peers for
+the rest of this work. To allow the usage of multiple SCION paths to a
+particular peer, a new peer representation called path-level peer is
+introduced. Path-level peers are always SCION peers. The
+representation of a path-level peer is changed from using only the
+SCION address to a tuple (addr, path), consisting of the SCION address
+and one possible path to this peer.
+   #+end_quote
+
+   
+
