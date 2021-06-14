@@ -1,0 +1,12 @@
+#+TITLE Optimal Path Selection for Efficient Multipath Usage
+
+* Task
+  This task consists of creating a detailed concept as well as
+  planning the implementation of a high performance library providing
+  optimal path selection for efficient multipath usage over SCION
+  capable of dealing with the high requirements of BitTorrent
+
+* Concept
+  
+#+caption: Architecture overview
+[[./pathselection3.png]]
