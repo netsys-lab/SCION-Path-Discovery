@@ -17,9 +17,7 @@
   server, can select paths to a destination on its own. Given the
   desired destination, it is the responsibility of each autonomous
   system (AS) to provide its hosts with reasonable path
-  /options/[fn::"Path options" do not necessarily mean "ready-made
-  paths". In SCION, path servers disseminate "path segments" from
-  which the hosts then construct complete paths.], while the final
+  /options/, while the final
   path /selection/ authority lies with the hosts.
 
   For the current Internet, the "Application-Layer Traffic
