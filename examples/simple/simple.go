@@ -11,7 +11,7 @@ import (
 func main() {
 
 	peer1, nil := snet.ParseUDPAddr("19-ffaa:1:e9e,[127.0.0.1]:12345")
-	peers := []*snet.UDPAddr{peer1} //, ""}
+	peers := []*snet.UDPAddr{peer1}
 	manualSelection := false
 
 	for _, peer := range peers {

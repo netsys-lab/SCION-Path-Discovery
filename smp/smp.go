@@ -129,7 +129,7 @@ func (mp MPPeerSock) Connect() ([]MonitoredConn, error) {
 	conn.Write([]byte("Hello World!\n"))
 	// Do some operations on the metrics here
 	// and then maybe fire pathset change event
-	newPeer, nil := snet.ParseUDPAddr("19-ffaa:1:e9e,[127.0.0.1]:12345")
+	newPeer, nil := snet.ParseUDPAddr("19-ffaa-1-f0bE,[127.0.0.1]:12345")
 	mp.OnPathsetChange <- []*snet.UDPAddr{newPeer}
 	// }()
 	return []MonitoredConn{}, nil
