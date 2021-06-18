@@ -10,10 +10,12 @@ import (
 
 func main() {
 
-	peer1, nil := snet.ParseUDPAddr("19-ffaa:1:e9e,[127.0.0.1]:12345")
+	peer1, nil := snet.ParseUDPAddr("18-ffaa:1:ef8,[127.0.0.1]:12345")
+	fmt.Printf(peer1.String())
 	peers := []*snet.UDPAddr{peer1}
 	manualSelection := false
 
+	fmt.Printf(peers[0].String())
 	for _, peer := range peers {
 		mpSock := smp.NewMPSock(peer)
 
@@ -21,6 +23,7 @@ func main() {
 		// the connect and dial methods since the socket keeps
 		// them, but maybe its easier for applications, especially for dialPath
 		_, err := mpSock.Connect()
+
 		if err != nil {
 			return
 		}

@@ -115,13 +115,16 @@ func (mp MPPeerSock) Connect() ([]MonitoredConn, error) {
 	for i := range paths {
 		fmt.Println("Path", i, ":", paths[i])
 	}
+
+	selectShortestPaths(5, paths)
+	sel_path := selectShortestPath(paths)
 	// sel_path, err := appnet.ChoosePathByMetric(appnet.Shortest, snet_udp_addr.IA)
 	// sel_path, err := appnet.ChoosePathInteractive(snet_udp_addr.IA)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	appnet.SetPath(snet_udp_addr, paths[0])
+	appnet.SetPath(snet_udp_addr, sel_path)
 	conn, err := mp.DialPath(snet_udp_addr)
 	if err != nil {
 		return nil, err
@@ -129,8 +132,9 @@ func (mp MPPeerSock) Connect() ([]MonitoredConn, error) {
 	conn.Write([]byte("Hello World!\n"))
 	// Do some operations on the metrics here
 	// and then maybe fire pathset change event
-	newPeer, nil := snet.ParseUDPAddr("19-ffaa-1-f0bE,[127.0.0.1]:12345")
+	newPeer, nil := snet.ParseUDPAddr("18-ffaa:1:ef8,[127.0.0.1]:12345")
 	mp.OnPathsetChange <- []*snet.UDPAddr{newPeer}
+
 	// }()
 	return []MonitoredConn{}, nil
 }

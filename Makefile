@@ -7,8 +7,8 @@ BUILDDIR = ./bin
 nico-simple:
 	mkdir -p $(BUILDDIR)
 	$(CC) -o $(BUILDDIR)/simple examples/simple/*.go
-	cp -f $(BUILDDIR)/simple /mnt/k/148
-	cp -f $(BUILDDIR)/simple /mnt/k/151
+	cp -f $(BUILDDIR)/simple /mnt/k/EU
+	cp -f $(BUILDDIR)/simple /mnt/k/NA
 
 
 
@@ -16,8 +16,8 @@ nico-simple:
 karola-simple:
 	mkdir -p $(BUILDDIR)
 	$(CC) -o $(BUILDDIR)/$@ examples/simple/*.go
-	cp -f $(BUILDDIR)/simple /mnt/k/Dokumente/148
-	cp -f $(BUILDDIR)/simple /mnt/k/Dokumente/151
+	cp -f $(BUILDDIR)/simple /mnt/k/Dokumente/EU
+	cp -f $(BUILDDIR)/simple /mnt/k/Dokumente/NA
 
 clean:
 	rm -f $(BUILDDIR)/*
