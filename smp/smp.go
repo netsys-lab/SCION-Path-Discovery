@@ -115,9 +115,14 @@ func (mp MPPeerSock) Connect() ([]MonitoredConn, error) {
 	for i := range paths {
 		fmt.Println("Path", i, ":", paths[i])
 	}
+	//Set of shortest paths and shorest path
+	//selectShortestPaths(5, paths)
+	//sel_path := selectShortestPath(paths)
 
-	selectShortestPaths(5, paths)
-	sel_path := selectShortestPath(paths)
+	//Set of largestMTU paths and largestMTU path
+	selectLargestMTUs(5, paths)
+	sel_path := selectLargestMTU(paths)
+
 	// sel_path, err := appnet.ChoosePathByMetric(appnet.Shortest, snet_udp_addr.IA)
 	// sel_path, err := appnet.ChoosePathInteractive(snet_udp_addr.IA)
 	if err != nil {
