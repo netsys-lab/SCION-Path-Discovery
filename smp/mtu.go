@@ -18,7 +18,7 @@ func (paths byMTU) Swap(i, j int) {
 }
 
 func (paths byMTU) Less(i, j int) bool {
-	return len(paths[i].Metadata().Interfaces) < len(paths[j].Metadata().Interfaces)
+	return paths[i].Metadata().MTU < paths[j].Metadata().MTU
 }
 
 // Select the (count) paths from given path array with the largest MTUs
