@@ -1,9 +1,8 @@
 package smp
 
 import (
-	"net"
-
-	"github.com/netsec-ethz/scion-apps/pkg/appnet"
+	"github.com/netsys-lab/scion-multipath-lib/packets"
+	"github.com/netsys-lab/scion-multipath-lib/peers"
 )
 
 // Pathselection/Multipath library draft 0.0.2
@@ -48,14 +47,67 @@ const (
 // that handles multiple MPPeerSocks
 type MPPeerSock struct {
 	Peer                    string
-	OnPathsetChange         chan []string   // TODO: Design a real struct for this, string is only dummy
-	Pathset                 []string        // TODO: Design a real struct for this, string is only dummy
-	Connections             []MonitoredConn //
-	PathSelectionProperties []string        // TODO: Design a real struct for this, string is only dummy
+	OnPathsetChange         chan []string         // TODO: Design a real struct for this, string is only dummy
+	Pathset                 []peers.PathlevelPeer // TODO: Design a real struct for this, string is only dummy  //
+	PathSelectionProperties []string              // TODO: Design a real struct for this, string is only dummy
+	PacketScheduler         packets.PacketScheduler
+	Local                   string
 }
 
+func NewMPPeerSock(local, peer string) *MPPeerSock {
+	return &MPPeerSock{
+		Peer:            peer,
+		Local:           local,
+		OnPathsetChange: make(chan []string),
+	}
+}
+
+func (mp MPPeerSock) StartPathSelection() {
+	// We could put a timer here.
+	// Every X seconds we collect metrics from the packetScheduler
+	// and provide them for path selection
+	// Furthermore, a first pathset should be defined
+	go func() {
+		mp.OnPathsetChange <- []string{"Path1", "Path2", "Path3"}
+	}()
+
+	// Determine Pathlevelpeers
+	// mp.PacketScheduler.SetPathlevelPeers()
+}
+
+// A first approach could be to open connections over all
+// Paths to later reduce time effort for switching paths
+func (mp MPPeerSock) Connect() error {
+	mp.StartPathSelection()
+	return nil
+}
+
+// TODO: Close all connections gracefully...
+func (mp MPPeerSock) Disconnect() error {
+	return nil
+}
+
+//
+// Added in 0.0.2
+//
+
+// Read from the peer over a specific path
+// Here the socket could decide from which path to read or we have to read from all
+func (mp MPPeerSock) Read(b []byte) (int, error) {
+	return 0, nil
+}
+
+// Write to the peer over a specific path
+// Here the socket could decide over which path to write
+func (mp MPPeerSock) Write(b []byte) (int, error) {
+	return 0, nil
+}
+
+// DEPRECATED
 // This one extends a SCION connection to collect metrics for each connection
 // Since a connection has always one path, the metrics are also path metrics
+// This becomes obselete if we collect the metrics inside the packet Gen/Handler
+/*
 type MonitoredConn struct {
 	internalConn net.Conn // Is later SCION conn, or with TAPS a connection independently of the network/transport
 	Path         string   // string is only a dummy here, needs to be a real path interface
@@ -88,33 +140,6 @@ func NewMonitoredConn(path string) (*MonitoredConn, error) {
 	}, nil
 }
 
-func NewMPPeerSock(peer string) *MPPeerSock {
-	return &MPPeerSock{
-		Peer:            peer,
-		OnPathsetChange: make(chan []string),
-	}
-}
-
-func (mp MPPeerSock) CloseConn(conn MonitoredConn) {
-	conn.internalConn.Close()
-}
-
-// A first approach could be to open connections over all
-// Paths to later reduce time effort for switching paths
-func (mp MPPeerSock) Connect() ([]MonitoredConn, error) {
-	go func() {
-		// Do some operations on the metrics here
-		// and then maybe fire pathset change event
-		mp.OnPathsetChange <- []string{"Path1", "Path2", "Path3"}
-	}()
-	return []MonitoredConn{}, nil
-}
-
-// TODO: Close all connections gracefully...
-func (mp MPPeerSock) Disconnect() error {
-	return nil
-}
-
 // This one should "activate" the connection over the respective path
 // or create one if its not there yet
 func (mp MPPeerSock) DialPath(path string) (*MonitoredConn, error) {
@@ -126,19 +151,4 @@ func (mp MPPeerSock) DialPath(path string) (*MonitoredConn, error) {
 func (mp MPPeerSock) DialAll(path []string) ([]MonitoredConn, error) {
 	return []MonitoredConn{}, nil
 }
-
-//
-// Added in 0.0.2
-//
-
-// Read from the peer over a specific path
-// Here the socket could decide from which path to read or we have to read from all
-func (mp MPPeerSock) Read(b []byte) (int, error) {
-	return 0, nil
-}
-
-// Write to the peer over a specific path
-// Here the socket could decide over which path to write
-func (mp MPPeerSock) Write(b []byte) (int, error) {
-	return 0, nil
-}
+*/
