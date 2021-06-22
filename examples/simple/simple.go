@@ -4,11 +4,19 @@ import (
 	"fmt"
 
 	"github.com/netsys-lab/scion-multipath-lib/smp"
+	"github.com/scionproto/scion/go/lib/snet"
 )
 
+func customPathSelectAlg(paths []snet.Path) ([]snet.Path, error) {
+	// do manipulations on pathset. For now just select first 3
+	pathsToReturn := make([]snet.Path, 3)
+	copy(paths[:3], pathsToReturn[:])
+	return pathsToReturn, nil
+}
+
 func main() {
-	// peers := []string{"17-ffaa:0:1108,[127.0.0.1]:12345"} //, ""}
-	peers := []string{"19-ffaa:1:e9e,[127.0.0.1]:12345"} //, ""}
+	peers := []string{"17-ffaa:0:1108,[127.0.0.1]:12345"} //, ""}
+	// peers := []string{"19-ffaa:1:e9e,[127.0.0.1]:12345"} //, ""}
 	manualSelection := false
 
 	for _, peer := range peers {
@@ -17,7 +25,7 @@ func main() {
 		// TODO: We could remove the return of the connections for
 		// the connect and dial methods since the socket keeps
 		// them, but maybe its easier for applications, especially for dialPath
-		_, err := mpSock.Connect()
+		_, err := mpSock.Connect(customPathSelectAlg)
 		if err != nil {
 			return
 		}
