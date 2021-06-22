@@ -2,8 +2,51 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"os"
 
-	"github.com/netsys-lab/scion-multipath-lib/smp"
+	smp "github.com/netsys-lab/scion-multipath-lib/api"
+)
+
+func main() {
+	peers := []string{"peer1", "peer2", "peer3"} // Later real addresses
+	local := "peer0"
+	for _, peer := range peers {
+		mpSock := smp.NewMPPeerSock(local, peer)
+		err := mpSock.Connect()
+		if err != nil {
+			log.Fatal("Failed to connect MPPeerSock", err)
+			os.Exit(1)
+		}
+
+		go func(mpSock *smp.MPPeerSock) {
+			buf := make([]byte, 1200)
+			n, err := mpSock.Read(buf)
+			if err != nil {
+				log.Fatal("Failed to connect MPPeerSock", err)
+				os.Exit(1)
+			}
+			fmt.Printf("Read %d bytes of data from %s", n, mpSock.Local)
+		}(mpSock)
+
+		data := make([]byte, 1200)
+		n, err := mpSock.Write(data)
+		if err != nil {
+			log.Fatal("Failed to connect MPPeerSock", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Wrote %d bytes of data to %s", n, mpSock.Peer)
+	}
+}
+
+/*
+Deprecated: Covers the old routine
+package main
+
+import (
+	"fmt"
+
+	smp "github.com/netsys-lab/scion-multipath-lib/api"
 )
 
 func main() {
@@ -11,7 +54,7 @@ func main() {
 	manualSelection := false
 
 	for _, peer := range peers {
-		mpSock := smp.NewMPSock(peer)
+		mpSock := smp.NewMPPeerSock(peer)
 
 		// TODO: We could remove the return of the connections for
 		// the connect and dial methods since the socket keeps
@@ -71,3 +114,4 @@ func main() {
 		}()
 	}
 }
+*/
