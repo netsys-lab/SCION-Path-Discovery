@@ -8,6 +8,13 @@ import (
 	"github.com/scionproto/scion/go/lib/snet"
 )
 
+func customPathSelectAlg(paths []snet.Path) ([]snet.Path, error) {
+	// do manipulations on pathset. For now just select first 3
+	pathsToReturn := make([]snet.Path, 3)
+	copy(paths[:3], pathsToReturn[:])
+	return pathsToReturn, nil
+}
+
 func main() {
 
 	peer1, nil := snet.ParseUDPAddr("18-ffaa:1:ef8,[127.0.0.1]:12345")
@@ -22,7 +29,7 @@ func main() {
 		// TODO: We could remove the return of the connections for
 		// the connect and dial methods since the socket keeps
 		// them, but maybe its easier for applications, especially for dialPath
-		_, err := mpSock.Connect()
+		_, err := mpSock.Connect(customPathSelectAlg)
 
 		if err != nil {
 			return
@@ -52,14 +59,14 @@ func main() {
 					// This example is not intended to make sense, but to show
 					// how interacting with the socket could work
 					if len(newPaths) > 0 {
-						conn, err := mpSock.DialPath(newPaths[0])
+						//conn, err := mpSock.DialPath(newPaths[0])
 						if err != nil {
 							return
 						}
 
-						if conn.State == smp.CONN_HANDSHAKING {
+						/*if conn.State == smp.CONN_HANDSHAKING {
 							fmt.Printf("Connection for path %s is now handshaking", conn.Path)
-						}
+						}*/
 					}
 				} else {
 					// This dials connections over all new paths and closes the old ones
