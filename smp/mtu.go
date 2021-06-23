@@ -18,24 +18,29 @@ func (paths byMTU) Swap(i, j int) {
 }
 
 func (paths byMTU) Less(i, j int) bool {
-	return paths[i].Metadata().MTU < paths[j].Metadata().MTU
+	// switched so that lager MTUs are at index 0
+	return paths[i].Metadata().MTU > paths[j].Metadata().MTU
 }
 
 // Select the (count) paths from given path array with the largest MTUs
-func selectLargestMTUs(count int, paths []snet.Path) (selectedPaths []snet.Path) {
-	sort.Sort(byMTU(paths))
-	selectedPaths = paths[len(paths)-count : len(paths)-1]
-	fmt.Println("Selected Paths, ", count, "paths with largest MTUs: ", selectedPaths)
+func SelectLargestMTUs(count int, paths []snet.Path) (selectedPaths []snet.Path) {
+	lenPaths := len(paths)
+	if lenPaths > 0 {
+		sort.Sort(byMTU(paths))
+		if lenPaths < count {
+			selectedPaths = paths[0:lenPaths]
+		} else {
+			selectedPaths = paths[0:count]
+		}
+	}
+	fmt.Println("Selected paths with largest MTUs:")
+	for i, path := range selectedPaths {
+		fmt.Printf("Path %d: %+v\n", i, path)
+	}
 	return selectedPaths
 }
 
 // Select the paths from given path array with largest MTU
-func selectLargestMTU(paths []snet.Path) (selectedPath snet.Path) {
-	for _, path := range paths {
-		if selectedPath == nil || path.Metadata().MTU > selectedPath.Metadata().MTU {
-			selectedPath = path
-		}
-	}
-	fmt.Println("Selected Path with MTU: ", selectedPath.Metadata().MTU, " ", selectedPath)
-	return selectedPath
+func SelectLargestMTU(paths []snet.Path) snet.Path {
+	return SelectShortestPaths(1, paths)[0]
 }

@@ -9,27 +9,27 @@ import (
 )
 
 func customPathSelectAlg(paths []snet.Path) ([]snet.Path, error) {
-	// do manipulations on pathset. For now just select first 3
-	pathsToReturn := make([]snet.Path, 3)
-	copy(paths[:3], pathsToReturn[:])
+	paths1 := smp.SelectShortestPaths(5, paths)
+	pathsToReturn := smp.SelectLowestLatencies(3, paths1)
+	// pathsToReturn := []snet.Path{smp.SelectLowestLatency(paths)}
 	return pathsToReturn, nil
 }
 
 func main() {
-
+	// peer1, nil := snet.ParseUDPAddr("19-ffaa:1:e9e,[127.0.0.1]:12345")
 	peer1, nil := snet.ParseUDPAddr("18-ffaa:1:ef8,[127.0.0.1]:12345")
-	fmt.Printf(peer1.String())
+	// fmt.Printf(peer1.String())
 	peers := []*snet.UDPAddr{peer1}
 	manualSelection := false
 
-	fmt.Printf(peers[0].String())
+	// fmt.Printf(peers[0].String())
 	for _, peer := range peers {
 		mpSock := smp.NewMPSock(peer)
 
 		// TODO: We could remove the return of the connections for
 		// the connect and dial methods since the socket keeps
 		// them, but maybe its easier for applications, especially for dialPath
-		_, err := mpSock.Connect(customPathSelectAlg)
+		err := mpSock.Connect(customPathSelectAlg)
 
 		if err != nil {
 			return
@@ -53,7 +53,7 @@ func main() {
 				if manualSelection {
 					// Here we could close the last connection (maybe when they are sorted somehow)
 					if len(mpSock.Connections) > 0 {
-						mpSock.CloseConn(mpSock.Connections[len(mpSock.Connections)-1])
+						smp.CloseConn(mpSock.Connections[len(mpSock.Connections)-1])
 					}
 					// And use the first path returned to open a new one.
 					// This example is not intended to make sense, but to show
@@ -72,13 +72,13 @@ func main() {
 					// This dials connections over all new paths and closes the old ones
 					// This could be wrapped in a "MPSock" struct that does also packet scheduling
 					// But we will see later...
-					_, err = mpSock.DialAll(newPaths)
+					err = mpSock.DialAll()
 				}
 
 				// The socket keeps always an up to date list of all connections
 				for _, conn := range mpSock.Connections {
 					if conn.State == smp.CONN_ACTIVE {
-						fmt.Printf("Connection for path %s is active", conn.Path)
+						fmt.Printf("Connection for path %s is active", *conn.Path)
 					}
 				}
 			}

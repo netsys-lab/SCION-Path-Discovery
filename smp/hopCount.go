@@ -22,20 +22,24 @@ func (paths byHopCount) Less(i, j int) bool {
 }
 
 // Select the (count) shortest paths from given path array
-func selectShortestPaths(count int, paths []snet.Path) (selectedPaths []snet.Path) {
-	sort.Sort(byHopCount(paths))
-	selectedPaths = paths[0 : count-1]
-	fmt.Println("Selected Paths, ", count, "shortest Paths: ", selectedPaths)
+func SelectShortestPaths(count int, paths []snet.Path) (selectedPaths []snet.Path) {
+	lenPaths := len(paths)
+	if lenPaths > 0 {
+		sort.Sort(byHopCount(paths))
+		if lenPaths < count {
+			selectedPaths = paths[0:lenPaths]
+		} else {
+			selectedPaths = paths[0:count]
+		}
+	}
+	fmt.Println("Selected shortest paths:")
+	for i, path := range selectedPaths {
+		fmt.Printf("Path %d: %+v\n", i, path)
+	}
 	return selectedPaths
 }
 
 // Select the shortest paths from given path array
-func selectShortestPath(paths []snet.Path) (selectedPath snet.Path) {
-	for _, path := range paths {
-		if selectedPath == nil || len(path.Metadata().Interfaces) < len(selectedPath.Metadata().Interfaces) {
-			selectedPath = path
-		}
-	}
-	fmt.Println("Selected Path with hop count: ", len(selectedPath.Metadata().Interfaces), " ", selectedPath)
-	return selectedPath
+func SelectShortestPath(paths []snet.Path) snet.Path {
+	return SelectShortestPaths(1, paths)[0]
 }

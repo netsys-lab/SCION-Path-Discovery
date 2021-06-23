@@ -25,26 +25,32 @@ func (paths byLatency) Less(i, j int) bool {
 func sumupLatencies(latencies []time.Duration) (totalLatency time.Duration) {
 	totalLatency = 0
 	for _, latency := range latencies {
-		totalLatency += latency
+		if latency > 0 {
+			totalLatency += latency
+		}
 	}
 	return totalLatency
 }
 
 // Select the (count) paths from given path array with the lowest total latencies
-func selectLowestLatencies(count int, paths []snet.Path) (selectedPaths []snet.Path) {
-	sort.Sort(byLatency(paths))
-	selectedPaths = paths[0 : count-1]
-	fmt.Println("Selected Paths, ", count, "paths with lowest total latencies: ", selectedPaths)
+func SelectLowestLatencies(count int, paths []snet.Path) (selectedPaths []snet.Path) {
+	lenPaths := len(paths)
+	if lenPaths > 0 {
+		sort.Sort(byLatency(paths))
+		if lenPaths < count {
+			selectedPaths = paths[0:lenPaths]
+		} else {
+			selectedPaths = paths[0:count]
+		}
+	}
+	fmt.Println("Selected paths with lowest total latencies:")
+	for i, path := range selectedPaths {
+		fmt.Printf("Path %d: %+v\n", i, path)
+	}
 	return selectedPaths
 }
 
 // Select the paths from given path array with lowest total latency
-func selectLowestLatency(paths []snet.Path) (selectedPath snet.Path) {
-	for _, path := range paths {
-		if selectedPath == nil || sumupLatencies(path.Metadata().Latency) < sumupLatencies(selectedPath.Metadata().Latency) {
-			selectedPath = path
-		}
-	}
-	fmt.Println("Selected Path with lowest total latency: ", sumupLatencies(selectedPath.Metadata().Latency), " ", selectedPath)
-	return selectedPath
+func SelectLowestLatency(paths []snet.Path) snet.Path {
+	return SelectLowestLatencies(1, paths)[0]
 }
