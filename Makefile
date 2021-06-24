@@ -1,4 +1,4 @@
-CC       = go build
+CC       = go build -v
 BUILDDIR = ./bin
 PRGS     = simple
 
