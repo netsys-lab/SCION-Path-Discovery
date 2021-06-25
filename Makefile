@@ -1,5 +1,6 @@
-CC       = go build
+CC       = go build -v
 BUILDDIR = ./bin
+PRGS     = simple
 
 
 
@@ -10,6 +11,9 @@ nico-simple:
 	cp -f $(BUILDDIR)/simple /home/nicolas/Documents/BitTorrent/VM_e9e
 	cp -f $(BUILDDIR)/simple /home/nicolas/Documents/BitTorrent/VM_ea6
 
+.PHONY: simple
+simple: prepare
+	$(CC) -o $(BUILDDIR)/$@ examples/simple/*.go
 
 
 .PHONY: karola-simple
