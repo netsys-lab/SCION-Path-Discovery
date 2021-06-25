@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/netsec-ethz/scion-apps/pkg/appnet"
-	"github.com/scionproto/scion/go/lib/snet"
 	"github.com/netsys-lab/scion-multipath-lib/packets"
-	"github.com/netsys-lab/scion-multipath-lib/peers"
+	"github.com/scionproto/scion/go/lib/snet"
+	// "github.com/netsys-lab/scion-multipath-lib/peers"
 )
 
 // Pathselection/Multipath library draft 0.0.2
@@ -61,11 +61,11 @@ type MPPeerSock struct {
 	Local                   string
 }
 
-func NewMPPeerSock(local, peer string) *MPPeerSock {
+func NewMPPeerSock(local string, peer *snet.UDPAddr) *MPPeerSock {
 	return &MPPeerSock{
 		Peer:            peer,
 		Local:           local,
-		OnPathsetChange: make(chan []string),
+		OnPathsetChange: make(chan []snet.Path),
 	}
 }
 
@@ -75,23 +75,11 @@ func (mp MPPeerSock) StartPathSelection() {
 	// and provide them for path selection
 	// Furthermore, a first pathset should be defined
 	go func() {
-		mp.OnPathsetChange <- []string{"Path1", "Path2", "Path3"}
+		mp.OnPathsetChange <- []snet.Path{}
 	}()
 
 	// Determine Pathlevelpeers
 	// mp.PacketScheduler.SetPathlevelPeers()
-}
-
-// A first approach could be to open connections over all
-// Paths to later reduce time effort for switching paths
-func (mp MPPeerSock) Connect() error {
-	mp.StartPathSelection()
-	return nil
-}
-
-// TODO: Close all connections gracefully...
-func (mp MPPeerSock) Disconnect() error {
-	return nil
 }
 
 //
@@ -113,7 +101,7 @@ func (mp MPPeerSock) Write(b []byte) (int, error) {
 // DEPRECATED
 // This one extends a SCION connection to collect metrics for each connection
 // Since a connection has always one path, the metrics are also path metrics
-// This becomes obselete if we collect the metrics inside the packet Gen/Handler
+// This becomes obsolete if we collect the metrics inside the packet Gen/Handler
 type MonitoredConn struct {
 	internalConn *snet.Conn
 	Path         *snet.Path
@@ -162,6 +150,7 @@ func CloseConn(conn MonitoredConn) error {
 // A first approach could be to open connections over all
 // Paths to later reduce time effort for switching paths
 func (mp *MPPeerSock) Connect(customPathSelection selAlg) error {
+	// mp.StartPathSelection()
 	var err error
 	snetUDPAddr := mp.Peer
 	mp.FullPathset, err = appnet.DefNetwork().PathQuerier.Query(context.Background(), snetUDPAddr.IA)
@@ -172,10 +161,10 @@ func (mp *MPPeerSock) Connect(customPathSelection selAlg) error {
 		fmt.Printf("Path %d: %+v\n", i, path)
 	}
 	mp.SelectedPathset, err = customPathSelection(mp.FullPathset)
-	// err = mp.DialAll()
-	// if err != nil {
-	// 	return nil, err
-	// }
+	err = mp.DialAll()
+	if err != nil {
+		return err
+	}
 	// mp.Connections[0].Write([]byte("Hello World!\n"))
 	mp.OnPathsetChange <- mp.SelectedPathset
 	return nil

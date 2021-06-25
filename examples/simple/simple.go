@@ -6,7 +6,6 @@ import (
 	"os"
 
 	smp "github.com/netsys-lab/scion-multipath-lib/api"
-	"github.com/netsys-lab/scion-multipath-lib/smp"
 	"github.com/scionproto/scion/go/lib/snet"
 )
 
@@ -20,9 +19,14 @@ func customPathSelectAlg(paths []snet.Path) ([]snet.Path, error) {
 func main() {
 	peers := []string{"peer1", "peer2", "peer3"} // Later real addresses
 	local := "peer0"
+	var parsedPeers []*snet.UDPAddr
 	for _, peer := range peers {
+		parsedPeer, _ := snet.ParseUDPAddr(peer)
+		parsedPeers = append(parsedPeers, parsedPeer)
+	}
+	for _, peer := range parsedPeers {
 		mpSock := smp.NewMPPeerSock(local, peer)
-		err := mpSock.Connect()
+		err := mpSock.Connect(customPathSelectAlg)
 		if err != nil {
 			log.Fatal("Failed to connect MPPeerSock", err)
 			os.Exit(1)
