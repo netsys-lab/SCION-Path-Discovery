@@ -5,8 +5,8 @@ import (
 	"log"
 	"os"
 
-	smp "github.com/netsys-lab/scion-path-discovery/api"
-	"github.com/netsys-lab/scion-path-discovery/pathselection"
+	smp "github.com/netsys-lab/scion-multipath-lib/api"
+	"github.com/netsys-lab/scion-multipath-lib/pathselection"
 	"github.com/scionproto/scion/go/lib/snet"
 )
 
@@ -18,13 +18,14 @@ func customPathSelectAlg(paths []snet.Path) ([]snet.Path, error) {
 }
 
 func main() {
-	peers := []string{"peer1", "peer2", "peer3"} // Later real addresses
+	peers := []string{"18-ffaa:1:ef8,[127.0.0.1]:12345", "peer2", "peer3"} // Later real addresses
 	local := "peer0"
 	var parsedPeers []*snet.UDPAddr
 	for _, peer := range peers {
 		parsedPeer, _ := snet.ParseUDPAddr(peer)
 		parsedPeers = append(parsedPeers, parsedPeer)
 	}
+
 	for _, peer := range parsedPeers {
 		mpSock := smp.NewMPPeerSock(local, peer)
 		err := mpSock.Connect(customPathSelectAlg)

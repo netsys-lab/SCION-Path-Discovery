@@ -1,5 +1,5 @@
 // The package main contains some implementation notes, while the rest of the project is split into sub-packages
-package main
+// package main
 
 // This file only contains comments, it gives a description of how the
 // presented interfaces interact with eachother
