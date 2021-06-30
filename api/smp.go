@@ -55,7 +55,7 @@ type MPPeerSock struct {
 	OnPathsetChange         chan []snet.Path
 	FullPathset             []snet.Path
 	SelectedPathset         []snet.Path
-	Connections             []MonitoredConn
+	Connections             []packets.MonitoredConn
 	PathSelectionProperties []string // TODO: Design a real struct for this, string is only dummy
 	PacketScheduler         packets.PacketScheduler
 	Local                   string
@@ -98,40 +98,17 @@ func (mp MPPeerSock) Write(b []byte) (int, error) {
 	return 0, nil
 }
 
-// DEPRECATED
-// This one extends a SCION connection to collect metrics for each connection
-// Since a connection has always one path, the metrics are also path metrics
-// This becomes obsolete if we collect the metrics inside the packet Gen/Handler
-type MonitoredConn struct {
-	internalConn *snet.Conn
-	Path         *snet.Path
-	State        int // See Connection States
-	// todo append metrices
-}
-
 type selAlg func([]snet.Path) ([]snet.Path, error)
 
-// This simply wraps conn.Read and will later collect metrics
-func (mConn *MonitoredConn) Read(b []byte) (int, error) {
-	n, err := mConn.internalConn.Read(b)
-	return n, err
-}
-
-// This simply wraps conn.Write and will later collect metrics
-func (mConn *MonitoredConn) Write(b []byte) (int, error) {
-	n, err := mConn.internalConn.Write(b)
-	return n, err
-}
-
-func NewMonitoredConn(snetUDPAddr snet.UDPAddr, path *snet.Path) (*MonitoredConn, error) {
+func NewMonitoredConn(snetUDPAddr snet.UDPAddr, path *snet.Path) (*packets.MonitoredConn, error) {
 	appnet.SetPath(&snetUDPAddr, *path)
 	conn, err := appnet.DialAddr(&snetUDPAddr)
 	if err != nil {
 		return nil, err
 	}
-	return &MonitoredConn{
+	return &packets.MonitoredConn{
 		Path:         path,
-		internalConn: conn,
+		InternalConn: conn,
 		State:        CONN_HANDSHAKING,
 	}, nil
 }
@@ -143,8 +120,8 @@ func NewMPSock(peer *snet.UDPAddr) *MPPeerSock {
 	}
 }
 
-func CloseConn(conn MonitoredConn) error {
-	return conn.internalConn.Close()
+func CloseConn(conn packets.MonitoredConn) error {
+	return conn.InternalConn.Close()
 }
 
 // A first approach could be to open connections over all
@@ -183,7 +160,7 @@ func (mp *MPPeerSock) Disconnect() []error {
 
 // This one should "activate" the connection over the respective path
 // or create one if its not there yet
-func (mp *MPPeerSock) DialPath(path *snet.Path) (*MonitoredConn, error) {
+func (mp *MPPeerSock) DialPath(path *snet.Path) (*packets.MonitoredConn, error) {
 	// copy mp.Peer to not interfere with other connections
 	connection, err := NewMonitoredConn(*mp.Peer, path)
 	if err != nil {

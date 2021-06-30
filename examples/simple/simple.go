@@ -6,12 +6,13 @@ import (
 	"os"
 
 	smp "github.com/netsys-lab/scion-multipath-lib/api"
+	"github.com/netsys-lab/scion-multipath-lib/pathselection"
 	"github.com/scionproto/scion/go/lib/snet"
 )
 
 func customPathSelectAlg(paths []snet.Path) ([]snet.Path, error) {
-	paths1 := smp.SelectShortestPaths(5, paths)
-	pathsToReturn := smp.SelectLowestLatencies(3, paths1)
+	paths1 := pathselection.SelectShortestPaths(5, paths)
+	pathsToReturn := pathselection.SelectLowestLatencies(3, paths1)
 	// pathsToReturn := []snet.Path{smp.SelectLowestLatency(paths)}
 	return pathsToReturn, nil
 }

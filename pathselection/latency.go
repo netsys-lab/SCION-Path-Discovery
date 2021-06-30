@@ -1,4 +1,4 @@
-package smp
+package pathselection
 
 import (
 	"fmt"
