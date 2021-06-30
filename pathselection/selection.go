@@ -8,9 +8,11 @@ import (
 	"github.com/scionproto/scion/go/lib/snet"
 )
 
+var FullPathset []snet.Path
+
 type PathAlternatives struct {
-	HostAddr addr.HostAddr
-	Paths    []snet.Path
+	Address snet.UDPAddr
+	Paths   []PathQuality
 }
 
 type PathEnumerator interface {

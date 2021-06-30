@@ -6,6 +6,7 @@ import (
 
 	"github.com/netsec-ethz/scion-apps/pkg/appnet"
 	"github.com/netsys-lab/scion-multipath-lib/packets"
+	"github.com/netsys-lab/scion-multipath-lib/pathselection"
 	"github.com/scionproto/scion/go/lib/snet"
 	// "github.com/netsys-lab/scion-multipath-lib/peers"
 )
@@ -52,9 +53,7 @@ const (
 // that handles multiple MPPeerSocks
 type MPPeerSock struct {
 	Peer                    *snet.UDPAddr
-	OnPathsetChange         chan []snet.Path
-	FullPathset             []snet.Path
-	SelectedPathset         []snet.Path
+	OnPathsetChange         chan []pathselection.PathQuality
 	Connections             []packets.MonitoredConn
 	PathSelectionProperties []string // TODO: Design a real struct for this, string is only dummy
 	PacketScheduler         packets.PacketScheduler
@@ -65,7 +64,7 @@ func NewMPPeerSock(local string, peer *snet.UDPAddr) *MPPeerSock {
 	return &MPPeerSock{
 		Peer:            peer,
 		Local:           local,
-		OnPathsetChange: make(chan []snet.Path),
+		OnPathsetChange: make(chan []pathselection.PathQuality),
 	}
 }
 
@@ -75,7 +74,7 @@ func (mp MPPeerSock) StartPathSelection() {
 	// and provide them for path selection
 	// Furthermore, a first pathset should be defined
 	go func() {
-		mp.OnPathsetChange <- []snet.Path{}
+		mp.OnPathsetChange <- []pathselection.PathQuality{}
 	}()
 
 	// Determine Pathlevelpeers
@@ -116,7 +115,7 @@ func NewMonitoredConn(snetUDPAddr snet.UDPAddr, path *snet.Path) (*packets.Monit
 func NewMPSock(peer *snet.UDPAddr) *MPPeerSock {
 	return &MPPeerSock{
 		Peer:            peer,
-		OnPathsetChange: make(chan []snet.Path),
+		OnPathsetChange: make(chan []pathselection.PathQuality),
 	}
 }
 
@@ -130,20 +129,30 @@ func (mp *MPPeerSock) Connect(customPathSelection selAlg) error {
 	// mp.StartPathSelection()
 	var err error
 	snetUDPAddr := mp.Peer
-	mp.FullPathset, err = appnet.DefNetwork().PathQuerier.Query(context.Background(), snetUDPAddr.IA)
+	pathselection.FullPathset, err = appnet.DefNetwork().PathQuerier.Query(context.Background(), snetUDPAddr.IA)
 	if err != nil {
 		return err
 	}
-	for i, path := range mp.FullPathset {
+	for i, path := range pathselection.FullPathset {
 		fmt.Printf("Path %d: %+v\n", i, path)
 	}
-	mp.SelectedPathset, err = customPathSelection(mp.FullPathset)
-	err = mp.DialAll()
+
+	var pathSubSet []snet.Path
+	pathAlternatives := pathselection.PathAlternatives{
+		Address: *snetUDPAddr}
+
+	pathSubSet, err = customPathSelection(pathselection.FullPathset)
+	for _, path := range pathSubSet {
+		pathQuality := pathselection.PathQuality{
+			Path: path}
+		pathAlternatives.Paths = append(pathAlternatives.Paths, pathQuality)
+	}
+	err = mp.DialAll(pathAlternatives)
 	if err != nil {
 		return err
 	}
 	// mp.Connections[0].Write([]byte("Hello World!\n"))
-	mp.OnPathsetChange <- mp.SelectedPathset
+	mp.OnPathsetChange <- pathAlternatives.Paths
 	return nil
 }
 
@@ -171,9 +180,10 @@ func (mp *MPPeerSock) DialPath(path *snet.Path) (*packets.MonitoredConn, error) 
 
 // Could call dialPath for all paths. However, not the connections over included
 // should be idled or closed here
-func (mp *MPPeerSock) DialAll() error {
-	for _, p := range mp.SelectedPathset {
-		connection, err := mp.DialPath(&p)
+func (mp *MPPeerSock) DialAll(pathAlternatives pathselection.PathAlternatives) error {
+	for _, p := range pathAlternatives.Paths {
+		path := &p.Path
+		connection, err := mp.DialPath(path)
 		if err != nil {
 			return err
 		}
