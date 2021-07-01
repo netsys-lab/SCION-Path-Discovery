@@ -10,10 +10,11 @@ import (
 	"github.com/scionproto/scion/go/lib/snet"
 )
 
-func customPathSelectAlg(paths []snet.Path) ([]snet.Path, error) {
-	paths1 := pathselection.SelectShortestPaths(5, paths)
-	pathsToReturn := pathselection.SelectLowestLatencies(3, paths1)
-	// pathsToReturn := []snet.Path{smp.SelectLowestLatency(paths)}
+func customPathSelectAlg(pathSet pathselection.PathSet) (pathsToReturn pathselection.PathSet, err error) {
+	shortestPathSubSet := pathselection.SelectShortestPaths(5, pathSet.Paths)
+	fastestPathSubSet := pathselection.SelectLowestLatencies(3, shortestPathSubSet)
+
+	pathsToReturn.Paths = append(pathsToReturn.Paths, fastestPathSubSet...)
 	return pathsToReturn, nil
 }
 

@@ -22,7 +22,7 @@ nico-simple:
 .PHONY: karola-simple
 karola-simple:
 	mkdir -p $(BUILDDIR)
-	$(CC) -o $(BUILDDIR)/$@ examples/simple/*.go
+	$(CC) -o $(BUILDDIR)/simple examples/simple/*.go
 	cp -f $(BUILDDIR)/simple /mnt/k/EU
 	cp -f $(BUILDDIR)/simple /mnt/k/NA
 
