@@ -3,44 +3,44 @@ package pathselection
 import (
 	"fmt"
 	"sort"
-
-	"github.com/scionproto/scion/go/lib/snet"
 )
 
-type byMTU []snet.Path
+type byMTU []PathQuality
 
-func (paths byMTU) Len() int {
-	return len(paths)
+func (pathSet byMTU) Len() int {
+	return len(pathSet)
 }
 
-func (paths byMTU) Swap(i, j int) {
-	paths[i], paths[j] = paths[j], paths[i]
+func (pathSet byMTU) Swap(i, j int) {
+	pathSet[i].Path, pathSet[j].Path = pathSet[j].Path, pathSet[i].Path
 }
 
-func (paths byMTU) Less(i, j int) bool {
+func (pathSet byMTU) Less(i, j int) bool {
 	// switched so that lager MTUs are at index 0
-	return paths[i].Metadata().MTU > paths[j].Metadata().MTU
+	return pathSet[i].Path.Metadata().MTU > pathSet[j].Path.Metadata().MTU
 }
 
 // Select the (count) paths from given path array with the largest MTUs
-func SelectLargestMTUs(count int, paths []snet.Path) (selectedPaths []snet.Path) {
-	lenPaths := len(paths)
+func SelectLargestMTUs(count int, pathSet []PathQuality) (selectedPathSet []PathQuality) {
+	lenPaths := len(pathSet)
+	var pathsToReturn []PathQuality
 	if lenPaths > 0 {
-		sort.Sort(byMTU(paths))
+		sort.Sort(byMTU(pathSet))
 		if lenPaths < count {
-			selectedPaths = paths[0:lenPaths]
+			pathsToReturn = pathSet[0:lenPaths]
 		} else {
-			selectedPaths = paths[0:count]
+			pathsToReturn = pathSet[0:count]
 		}
 	}
-	fmt.Println("Selected paths with largest MTUs:")
-	for i, path := range selectedPaths {
-		fmt.Printf("Path %d: %+v\n", i, path)
+	fmt.Println("Selected pathSet with largest MTUs:")
+	for i, returnPath := range pathsToReturn {
+		fmt.Printf("Path %d: %+v\n", i, returnPath)
+		selectedPathSet = append(selectedPathSet, PathQuality{MTU: returnPath.Path.Metadata().MTU, Path: returnPath.Path})
 	}
-	return selectedPaths
+	return selectedPathSet
 }
 
 // Select the paths from given path array with largest MTU
-func SelectLargestMTU(paths []snet.Path) snet.Path {
-	return SelectShortestPaths(1, paths)[0]
+func SelectLargestMTU(pathSet []PathQuality) (selectedPath PathQuality) {
+	return SelectLargestMTUs(1, pathSet)[0]
 }

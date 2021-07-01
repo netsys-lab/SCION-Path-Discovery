@@ -3,43 +3,43 @@ package pathselection
 import (
 	"fmt"
 	"sort"
-
-	"github.com/scionproto/scion/go/lib/snet"
 )
 
-type byHopCount []snet.Path
+type byHopCount []PathQuality
 
-func (paths byHopCount) Len() int {
-	return len(paths)
+func (pathSet byHopCount) Len() int {
+	return len(pathSet)
 }
 
-func (paths byHopCount) Swap(i, j int) {
-	paths[i], paths[j] = paths[j], paths[i]
+func (pathSet byHopCount) Swap(i, j int) {
+	pathSet[i].Path, pathSet[j].Path = pathSet[j].Path, pathSet[i].Path
 }
 
-func (paths byHopCount) Less(i, j int) bool {
-	return len(paths[i].Metadata().Interfaces) < len(paths[j].Metadata().Interfaces)
+func (pathSet byHopCount) Less(i, j int) bool {
+	return len(pathSet[i].Path.Metadata().Interfaces) < len(pathSet[j].Path.Metadata().Interfaces)
 }
 
 // Select the (count) shortest paths from given path array
-func SelectShortestPaths(count int, paths []snet.Path) (selectedPaths []snet.Path) {
-	lenPaths := len(paths)
+func SelectShortestPaths(count int, pathSet []PathQuality) (selectedPathSet []PathQuality) {
+	lenPaths := len(pathSet)
+	var pathsToReturn []PathQuality
 	if lenPaths > 0 {
-		sort.Sort(byHopCount(paths))
+		sort.Sort(byHopCount(pathSet))
 		if lenPaths < count {
-			selectedPaths = paths[0:lenPaths]
+			pathsToReturn = pathSet[0:lenPaths]
 		} else {
-			selectedPaths = paths[0:count]
+			pathsToReturn = pathSet[0:count]
 		}
 	}
 	fmt.Println("Selected shortest paths:")
-	for i, path := range selectedPaths {
-		fmt.Printf("Path %d: %+v\n", i, path)
+	for i, returnPath := range pathsToReturn {
+		fmt.Printf("Path %d: %+v\n", i, returnPath)
+		selectedPathSet = append(selectedPathSet, PathQuality{Hopcount: len(returnPath.Path.Metadata().Interfaces), Path: returnPath.Path})
 	}
-	return selectedPaths
+	return selectedPathSet
 }
 
 // Select the shortest paths from given path array
-func SelectShortestPath(paths []snet.Path) snet.Path {
-	return SelectShortestPaths(1, paths)[0]
+func SelectShortestPath(pathSet []PathQuality) (selectedPath PathQuality) {
+	return SelectShortestPaths(1, pathSet)[0]
 }

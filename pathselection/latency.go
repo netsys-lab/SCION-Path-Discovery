@@ -4,22 +4,20 @@ import (
 	"fmt"
 	"sort"
 	"time"
-
-	"github.com/scionproto/scion/go/lib/snet"
 )
 
-type byLatency []snet.Path
+type byLatency []PathQuality
 
-func (paths byLatency) Len() int {
-	return len(paths)
+func (pathSet byLatency) Len() int {
+	return len(pathSet)
 }
 
-func (paths byLatency) Swap(i, j int) {
-	paths[i], paths[j] = paths[j], paths[i]
+func (pathSet byLatency) Swap(i, j int) {
+	pathSet[i].Path, pathSet[j].Path = pathSet[j].Path, pathSet[i].Path
 }
 
-func (paths byLatency) Less(i, j int) bool {
-	return sumupLatencies(paths[i].Metadata().Latency) < sumupLatencies(paths[j].Metadata().Latency)
+func (pathSet byLatency) Less(i, j int) bool {
+	return sumupLatencies(pathSet[i].Path.Metadata().Latency) < sumupLatencies(pathSet[j].Path.Metadata().Latency)
 }
 
 func sumupLatencies(latencies []time.Duration) (totalLatency time.Duration) {
@@ -33,24 +31,26 @@ func sumupLatencies(latencies []time.Duration) (totalLatency time.Duration) {
 }
 
 // Select the (count) paths from given path array with the lowest total latencies
-func SelectLowestLatencies(count int, paths []snet.Path) (selectedPaths []snet.Path) {
-	lenPaths := len(paths)
+func SelectLowestLatencies(count int, pathSet []PathQuality) (selectedPathSet []PathQuality) {
+	lenPaths := len(pathSet)
+	var pathsToReturn []PathQuality
 	if lenPaths > 0 {
-		sort.Sort(byLatency(paths))
+		sort.Sort(byLatency(pathSet))
 		if lenPaths < count {
-			selectedPaths = paths[0:lenPaths]
+			pathsToReturn = pathSet[0:lenPaths]
 		} else {
-			selectedPaths = paths[0:count]
+			pathsToReturn = pathSet[0:count]
 		}
 	}
-	fmt.Println("Selected paths with lowest total latencies:")
-	for i, path := range selectedPaths {
-		fmt.Printf("Path %d: %+v\n", i, path)
+	fmt.Println("Selected pathSet with lowest total latencies:")
+	for i, returnPath := range pathsToReturn {
+		fmt.Printf("Path %d: %+v\n", i, returnPath)
+		selectedPathSet = append(selectedPathSet, PathQuality{Latency: sumupLatencies(returnPath.Path.Metadata().Latency), Path: returnPath.Path})
 	}
-	return selectedPaths
+	return selectedPathSet
 }
 
 // Select the paths from given path array with lowest total latency
-func SelectLowestLatency(paths []snet.Path) snet.Path {
-	return SelectLowestLatencies(1, paths)[0]
+func SelectLowestLatency(pathSet []PathQuality) (selectedPath PathQuality) {
+	return SelectLowestLatencies(1, pathSet)[0]
 }

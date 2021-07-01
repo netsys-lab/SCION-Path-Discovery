@@ -8,19 +8,20 @@ import (
 	"github.com/scionproto/scion/go/lib/snet"
 )
 
-var FullPathset []snet.Path
-
-type PathAlternatives struct {
+type PathSet struct {
 	Address snet.UDPAddr
 	Paths   []PathQuality
 }
 
 type PathEnumerator interface {
-	Enumerate(addr.HostAddr) PathAlternatives
+	Enumerate(addr.HostAddr) PathSet
 }
 
 type PathQuality struct {
 	Timestamp time.Time
+	Hopcount  int
+	MTU       uint16
+	Latency   time.Duration
 	RTT       time.Duration
 	Bytes     int
 	Duration  time.Duration
@@ -42,7 +43,7 @@ type QualityDB interface {
 	//returned PathQuality is then returned
 	GetPathCustom(addr.HostAddr, func([]PathQuality) PathQuality) snet.Path
 
-	AddPathAlternatives(PathAlternatives) error
+	AddPathAlternatives(PathSet) error
 	AddPathQuality(PathQuality) error
 }
 
