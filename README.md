@@ -7,7 +7,7 @@ The primary result is a library that can be used by developers to discover a set
 Peers are to be identified by a combination of their address and the path used to transfer packets to them, called path-level peers. This approach allows BitTorrent’s sophisticated file sharing mechanisms to run on path level, instead of implementing a dedicated multipath connection to each peer.
 
 ## Task 1. Optimal Path Selection for Efficient Multipath Usage
-This task consists of creating a [detailed concept](path-selection/path-selection.org) as well as [planning the implementation](https://godocs.io/github.com/netsys-lab/scion-multipath-lib) [![GoDoc](https://godoc.org/github.com/netsys-lab/scion-multipath-lib?status.svg)](https://godocs.io/github.com/netsys-lab/scion-multipath-lib) of a [high performance library](https://github.com/netsys-lab/multipath-lib) providing optimal path selection for efficient multipath usage over SCION capable of dealing with the high requirements of BitTorrent
+This task consists of creating a [detailed concept](path-selection/path-selection.org) as well as [planning the implementation](https://godocs.io/github.com/netsys-lab/scion-multipath-lib) [![GoDoc](https://godoc.org/github.com/netsys-lab/scion-multipath-lib?status.svg)](https://godocs.io/github.com/netsys-lab/scion-multipath-lib) of a [high performance library](https://github.com/netsys-lab/scion-multipath-lib) providing optimal path selection for efficient multipath usage over SCION capable of dealing with the high requirements of BitTorrent
 
 ### Milestone(s)
 -	[Concept](path-selection/path-selection.org) of an optimal path selection for efficient multipath usage
