@@ -47,7 +47,7 @@ const (
 	CONN_HANDSHAKING = 3
 )
 
-// This represents a multipath socket that can handle 1-n paths.
+// MPPeerSock This represents a multipath socket that can handle 1-n paths.
 // Each socket is bound to a specific peer
 // TODO: One socket that handles multiple peers? This could be done by a wrapper
 // that handles multiple MPPeerSocks
@@ -123,7 +123,7 @@ func CloseConn(conn packets.MonitoredConn) error {
 	return conn.InternalConn.Close()
 }
 
-// A first approach could be to open connections over all
+// Connect A first approach could be to open connections over all
 // Paths to later reduce time effort for switching paths
 func (mp *MPPeerSock) Connect(customPathSelection selAlg) error {
 	// mp.StartPathSelection()
@@ -170,7 +170,7 @@ func (mp *MPPeerSock) Disconnect() []error {
 	return errs
 }
 
-// This one should "activate" the connection over the respective path
+// DialPath This one should "activate" the connection over the respective path
 // or create one if its not there yet
 func (mp *MPPeerSock) DialPath(path *snet.Path) (*packets.MonitoredConn, error) {
 	// copy mp.Peer to not interfere with other connections
@@ -181,7 +181,7 @@ func (mp *MPPeerSock) DialPath(path *snet.Path) (*packets.MonitoredConn, error) 
 	return connection, nil
 }
 
-// Could call dialPath for all paths. However, not the connections over included
+// DialAll Could call dialPath for all paths. However, not the connections over included
 // should be idled or closed here
 func (mp *MPPeerSock) DialAll(pathAlternatives pathselection.PathSet) error {
 	for _, p := range pathAlternatives.Paths {

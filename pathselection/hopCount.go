@@ -19,7 +19,7 @@ func (pathSet byHopCount) Less(i, j int) bool {
 	return len(pathSet[i].Path.Metadata().Interfaces) < len(pathSet[j].Path.Metadata().Interfaces)
 }
 
-// Select the (count) shortest paths from given path array
+// SelectShortestPaths Select the (count) shortest paths from given path array
 func SelectShortestPaths(count int, pathSet []PathQuality) (selectedPathSet []PathQuality) {
 	lenPaths := len(pathSet)
 	var pathsToReturn []PathQuality
@@ -34,12 +34,12 @@ func SelectShortestPaths(count int, pathSet []PathQuality) (selectedPathSet []Pa
 	fmt.Println("Selected shortest paths:")
 	for i, returnPath := range pathsToReturn {
 		fmt.Printf("Path %d: %+v\n", i, returnPath)
-		selectedPathSet = append(selectedPathSet, PathQuality{Hopcount: len(returnPath.Path.Metadata().Interfaces), Path: returnPath.Path})
+		selectedPathSet = append(selectedPathSet, PathQuality{HopCount: len(returnPath.Path.Metadata().Interfaces), Path: returnPath.Path})
 	}
 	return selectedPathSet
 }
 
-// Select the shortest paths from given path array
+// SelectShortestPath Select the shortest paths from given path array
 func SelectShortestPath(pathSet []PathQuality) (selectedPath PathQuality) {
 	return SelectShortestPaths(1, pathSet)[0]
 }

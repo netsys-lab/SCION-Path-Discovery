@@ -20,7 +20,7 @@ func (pathSet byMTU) Less(i, j int) bool {
 	return pathSet[i].Path.Metadata().MTU > pathSet[j].Path.Metadata().MTU
 }
 
-// Select the (count) paths from given path array with the largest MTUs
+// SelectLargestMTUs Select the (count) paths from given path array with the largest MTUs
 func SelectLargestMTUs(count int, pathSet []PathQuality) (selectedPathSet []PathQuality) {
 	lenPaths := len(pathSet)
 	var pathsToReturn []PathQuality
@@ -40,7 +40,7 @@ func SelectLargestMTUs(count int, pathSet []PathQuality) (selectedPathSet []Path
 	return selectedPathSet
 }
 
-// Select the paths from given path array with largest MTU
+// SelectLargestMTU Select the paths from given path array with largest MTU
 func SelectLargestMTU(pathSet []PathQuality) (selectedPath PathQuality) {
 	return SelectLargestMTUs(1, pathSet)[0]
 }
