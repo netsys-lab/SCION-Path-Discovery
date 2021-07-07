@@ -30,7 +30,7 @@ func sumupLatencies(latencies []time.Duration) (totalLatency time.Duration) {
 	return totalLatency
 }
 
-// Select the (count) paths from given path array with the lowest total latencies
+// SelectLowestLatencies Select the (count) paths from given path array with the lowest total latencies
 func SelectLowestLatencies(count int, pathSet []PathQuality) (selectedPathSet []PathQuality) {
 	lenPaths := len(pathSet)
 	var pathsToReturn []PathQuality
@@ -50,7 +50,7 @@ func SelectLowestLatencies(count int, pathSet []PathQuality) (selectedPathSet []
 	return selectedPathSet
 }
 
-// Select the paths from given path array with lowest total latency
+// SelectLowestLatency Select the paths from given path array with lowest total latency
 func SelectLowestLatency(pathSet []PathQuality) (selectedPath PathQuality) {
 	return SelectLowestLatencies(1, pathSet)[0]
 }

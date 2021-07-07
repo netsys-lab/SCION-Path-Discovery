@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
 
 	smp "github.com/netsys-lab/scion-multipath-lib/api"
 	"github.com/netsys-lab/scion-multipath-lib/pathselection"
@@ -32,7 +31,6 @@ func main() {
 		err := mpSock.Connect(customPathSelectAlg)
 		if err != nil {
 			log.Fatal("Failed to connect MPPeerSock", err)
-			os.Exit(1)
 		}
 		defer mpSock.Disconnect()
 
@@ -41,7 +39,6 @@ func main() {
 			n, err := mpSock.Read(buf)
 			if err != nil {
 				log.Fatal("Failed to connect MPPeerSock", err)
-				os.Exit(1)
 			}
 			fmt.Printf("Read %d bytes of data from %s", n, mpSock.Local)
 		}(mpSock)
@@ -50,7 +47,6 @@ func main() {
 		n, err := mpSock.Write(data)
 		if err != nil {
 			log.Fatal("Failed to connect MPPeerSock", err)
-			os.Exit(1)
 		}
 		fmt.Printf("Wrote %d bytes of data to %s", n, mpSock.Peer)
 	}

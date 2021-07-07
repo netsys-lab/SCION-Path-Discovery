@@ -19,7 +19,7 @@ type PathEnumerator interface {
 
 type PathQuality struct {
 	Timestamp time.Time
-	Hopcount  int
+	HopCount  int
 	MTU       uint16
 	Latency   time.Duration
 	RTT       time.Duration
