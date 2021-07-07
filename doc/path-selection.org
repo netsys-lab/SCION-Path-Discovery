@@ -66,5 +66,5 @@ and one possible path to this peer.
 
 * API Design
 
-  See the [[https://godocs.io/github.com/netsys-lab/][Godoc Documentation]]
+  See the [[https://godocs.io/github.com/netsys-lab/scion-path-discovery][Godoc Documentation]]
 
