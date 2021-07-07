@@ -5,8 +5,8 @@ import (
 	"log"
 	"os"
 
-	smp "github.com/netsys-lab/scion-multipath-lib/api"
-	"github.com/netsys-lab/scion-multipath-lib/pathselection"
+	smp "github.com/netsys-lab/scion-path-discovery/api"
+	"github.com/netsys-lab/scion-path-discovery/pathselection"
 	"github.com/scionproto/scion/go/lib/snet"
 )
 

@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/netsec-ethz/scion-apps/pkg/appnet"
-	"github.com/netsys-lab/scion-multipath-lib/packets"
+	"github.com/netsys-lab/scion-path-discovery/packets"
 	"github.com/scionproto/scion/go/lib/snet"
-	// "github.com/netsys-lab/scion-multipath-lib/peers"
+	// "github.com/netsys-lab/scion-path-discovery/peers"
 )
 
 // Pathselection/Multipath library draft 0.0.2

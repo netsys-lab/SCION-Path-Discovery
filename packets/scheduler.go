@@ -1,7 +1,7 @@
 package packets
 
 import (
-	"github.com/netsys-lab/scion-multipath-lib/peers"
+	"github.com/netsys-lab/scion-path-discovery/peers"
 )
 
 // PacketSchedulers have a list of "selected" paths which comes
