@@ -38,7 +38,7 @@
   
   
  #+caption: Architecture overview
- [[./pathselection3.png]]
+ [[./images/pathselection3.png]]
 
  For our purposes, "optimal path selection" in the context of
  Bittorrent simply means /selecting the path(s) that maximize(s) the
@@ -66,5 +66,5 @@ and one possible path to this peer.
 
 * API Design
 
-  /TODO/
+  See the [[https://godocs.io/github.com/netsys-lab/][Godoc Documentation]]
 
