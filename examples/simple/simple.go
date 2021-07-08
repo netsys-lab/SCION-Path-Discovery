@@ -4,16 +4,17 @@ import (
 	"fmt"
 	"log"
 
-	smp "github.com/netsys-lab/scion-multipath-lib/api"
-	"github.com/netsys-lab/scion-multipath-lib/pathselection"
+	smp "github.com/netsys-lab/scion-path-discovery/api"
+	"github.com/netsys-lab/scion-path-discovery/pathselection"
 	"github.com/scionproto/scion/go/lib/snet"
 )
 
 func customPathSelectAlg(pathSet pathselection.PathSet) (pathsToReturn pathselection.PathSet, err error) {
-	shortestPathSubSet := pathselection.SelectShortestPaths(5, pathSet.Paths)
-	fastestPathSubSet := pathselection.SelectLowestLatencies(3, shortestPathSubSet)
+	//shortestPathSubSet := pathselection.SelectShortestPaths(5, pathSet.Paths)
+	//fastestPathSubSet := pathselection.SelectLowestLatencies(3, shortestPathSubSet)
 
-	pathsToReturn.Paths = append(pathsToReturn.Paths, fastestPathSubSet...)
+	shortestPathSubSet := pathSet.GetPathLowLatency()
+	pathsToReturn.Paths = append(pathsToReturn.Paths, pathselection.PathQuality{Path: shortestPathSubSet})
 	return pathsToReturn, nil
 }
 
