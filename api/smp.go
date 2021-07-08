@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/netsec-ethz/scion-apps/pkg/appnet"
-	"github.com/netsys-lab/scion-multipath-lib/packets"
-	"github.com/netsys-lab/scion-multipath-lib/pathselection"
+	"github.com/netsys-lab/scion-path-discovery/packets"
+	"github.com/netsys-lab/scion-path-discovery/pathselection"
 	"github.com/scionproto/scion/go/lib/snet"
 	// "github.com/netsys-lab/scion-multipath-lib/peers"
 )

@@ -1,7 +1,7 @@
 package pathselection
 
 import (
-	"fmt"
+	"github.com/scionproto/scion/go/lib/snet"
 	"sort"
 )
 
@@ -20,27 +20,8 @@ func (pathSet byMTU) Less(i, j int) bool {
 	return pathSet[i].Path.Metadata().MTU > pathSet[j].Path.Metadata().MTU
 }
 
-// SelectLargestMTUs Select the (count) paths from given path array with the largest MTUs
-func SelectLargestMTUs(count int, pathSet []PathQuality) (selectedPathSet []PathQuality) {
-	lenPaths := len(pathSet)
-	var pathsToReturn []PathQuality
-	if lenPaths > 0 {
-		sort.Sort(byMTU(pathSet))
-		if lenPaths < count {
-			pathsToReturn = pathSet[0:lenPaths]
-		} else {
-			pathsToReturn = pathSet[0:count]
-		}
-	}
-	fmt.Println("Selected pathSet with largest MTUs:")
-	for i, returnPath := range pathsToReturn {
-		fmt.Printf("Path %d: %+v\n", i, returnPath)
-		selectedPathSet = append(selectedPathSet, PathQuality{MTU: returnPath.Path.Metadata().MTU, Path: returnPath.Path})
-	}
-	return selectedPathSet
-}
-
-// SelectLargestMTU Select the paths from given path array with largest MTU
-func SelectLargestMTU(pathSet []PathQuality) (selectedPath PathQuality) {
-	return SelectLargestMTUs(1, pathSet)[0]
+// GetPathLargeMTU Select the paths from given path array with largest MTU
+func (pathSet *PathSet) GetPathLargeMTU() snet.Path {
+	sort.Sort(byMTU(pathSet.Paths))
+	return SelectPaths(1, pathSet)[0]
 }

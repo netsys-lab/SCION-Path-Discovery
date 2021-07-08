@@ -1,4 +1,4 @@
-module github.com/netsys-lab/scion-multipath-lib
+module github.com/netsys-lab/scion-path-discovery
 
 go 1.15
 

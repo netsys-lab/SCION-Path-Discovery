@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	smp "github.com/netsys-lab/scion-multipath-lib/api"
+	smp "github.com/netsys-lab/scion-path-discovery/api"
 )
 
 // This is a Bittorrent specific abstraction which will later be put
