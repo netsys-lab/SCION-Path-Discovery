@@ -1,9 +1,9 @@
+// Package main contains some implementation notes
 package main
 
 // This file only contains comments, it gives a description of how the
 // presented interfaces interact with eachother
 
-// @Thorben: Please Review if this makes sense or if its total overengineering :)
 // High-level overview:
 //
 // Client program (Bittorrent)
