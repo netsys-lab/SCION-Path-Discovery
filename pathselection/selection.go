@@ -13,13 +13,25 @@ type PathSet struct {
 	Paths   []PathQuality
 }
 
+
+
+func (pathSet *PathSet) GetPathFunc(hostAddr addr.HostAddr, f func(PathQuality, PathQuality) PathQuality) snet.Path {
+	panic("implement me")
+}
+
+func (pathSet *PathSet) GetPathCustom(hostAddr addr.HostAddr, f func([]PathQuality) PathQuality) snet.Path {
+	panic("implement me")
+}
+
+
+
 type PathEnumerator interface {
 	Enumerate(addr.HostAddr) PathSet
 }
 
 type PathQuality struct {
 	Timestamp time.Time
-	Hopcount  int
+	HopCount  int
 	MTU       uint16
 	Latency   time.Duration
 	RTT       time.Duration
@@ -29,8 +41,10 @@ type PathQuality struct {
 }
 
 type QualityDB interface {
-	GetPathHighBandwidth(addr.HostAddr) snet.Path
-	GetPathLowLatency(addr.HostAddr) snet.Path
+	GetPathHighBandwidth() snet.Path
+	GetPathLowLatency() snet.Path
+	GetPathLargeMTU() snet.Path
+	GetPathSmallHopCount() snet.Path
 	//GetPathFunc takes as second argument a function that is
 	//then called recursively over all PathQuality pairs, always
 	//retaining the returned result as the first input for the
@@ -51,4 +65,25 @@ type MeasuringReaderWriter interface {
 	io.Reader
 	io.Writer
 	Measure(snet.Path) chan PathQuality
+}
+
+func NewPathSet() QualityDB {
+	//return &PathSet{}
+	return nil
+}
+
+func SelectPaths(count int, pathSet *PathSet) (selectedPathSet []snet.Path) {
+	lenPaths := len(pathSet.Paths)
+	numPathsToReturn := 0
+	if lenPaths > 0 {
+		if lenPaths < count {
+			numPathsToReturn = lenPaths
+		} else {
+			numPathsToReturn = count
+		}
+		for i := 0; i < numPathsToReturn; i++ {
+			selectedPathSet = append(selectedPathSet, pathSet.Paths[i].Path)
+		}
+	}
+	return selectedPathSet
 }

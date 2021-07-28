@@ -1,7 +1,7 @@
 package peers
 
 import (
-	"github.com/netsys-lab/scion-multipath-lib/pathselection"
+	"github.com/netsys-lab/scion-path-discovery/pathselection"
 	"github.com/scionproto/scion/go/lib/snet"
 )
 

@@ -1,7 +1,8 @@
 package packets
 
 import (
-	"github.com/netsys-lab/scion-multipath-lib/peers"
+	"github.com/netsys-lab/scion-path-discovery/peers"
+	"github.com/scionproto/scion/go/lib/snet"
 )
 
 // PacketSchedulers have a list of "selected" paths which comes
@@ -14,6 +15,7 @@ type PacketScheduler interface {
 	SetPathlevelPeers(peers []peers.PathlevelPeer)
 	Write(data []byte, peer string)
 	Read(data []byte, peer string)
+	SetPathQualities([]snet.Path) error
 }
 
 // Implements a PacketScheduler that calculates weights out of
