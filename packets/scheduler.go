@@ -13,16 +13,18 @@ import (
 // paths it will be sent
 type PacketScheduler interface {
 	SetPathlevelPeers(peers []peers.PathlevelPeer)
-	Write(data []byte, peer string)
-	Read(data []byte, peer string)
 	SetPathQualities([]snet.Path) error
+	Write([]byte) (int, error)
+	Read([]byte) (int, error)
+	WriteStream([]byte) (int, error)
+	ReadStream([]byte) (int, error)
+	ConnectPeers() error
 }
 
 // Implements a PacketScheduler that calculates weights out of
 // PathQualities and sends packets depending on the weight of
 // each alternative
 type WeighedScheduler struct {
-	packetGen     PacketGen
-	packetHandler PacketHandler
-	peers         []peers.PathlevelPeer
+	peers       []peers.PathlevelPeer
+	connections []TransportConn
 }

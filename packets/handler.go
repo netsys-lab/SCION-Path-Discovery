@@ -10,7 +10,7 @@ type PacketHandlerMeta struct {
 
 type PacketHandler interface {
 	SetMeta(PacketGenMeta)
-	GetMetrics() PacketMetrics
+	// GetMetrics() PacketMetrics
 	// Handle works the other way round than generate
 	// We put a full SCION packet (encoded) in the Handle func
 	// and receive only the payload

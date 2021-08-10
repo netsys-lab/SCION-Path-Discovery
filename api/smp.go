@@ -52,6 +52,9 @@ type MPPeerSock struct {
 	Peer                    *snet.UDPAddr
 	OnPathsetChange         chan pathselection.PathSet
 	Connections             []packets.MonitoredConn
+	FullPathset             []snet.Path
+	SelectedPathset         []snet.Path
+	Connections             []packets.QUICReliableConn
 	PathSelectionProperties []string // TODO: Design a real struct for this, string is only dummy
 	PacketScheduler         packets.PacketScheduler
 	Local                   string
@@ -85,22 +88,22 @@ func (mp MPPeerSock) StartPathSelection() {
 // Read from the peer over a specific path
 // Here the socket could decide from which path to read or we have to read from all
 func (mp MPPeerSock) Read(b []byte) (int, error) {
-	return 0, nil
+	return mp.PacketScheduler.Read(b)
 }
 
 // Write to the peer over a specific path
 // Here the socket could decide over which path to write
 func (mp MPPeerSock) Write(b []byte) (int, error) {
-	return 0, nil
+	return mp.PacketScheduler.Write(b)
 }
 
-func NewMonitoredConn(snetUDPAddr snet.UDPAddr, path *snet.Path) (*packets.MonitoredConn, error) {
+func NewMonitoredConn(snetUDPAddr snet.UDPAddr, path *snet.Path) (*packets.QUICReliableConn, error) {
 	appnet.SetPath(&snetUDPAddr, *path)
 	conn, err := appnet.DialAddr(&snetUDPAddr)
 	if err != nil {
 		return nil, err
 	}
-	return &packets.MonitoredConn{
+	return &packets.QUICReliableConn{
 		Path:         path,
 		InternalConn: conn,
 		State:        CONN_HANDSHAKING,
@@ -115,7 +118,7 @@ func NewMonitoredConn(snetUDPAddr snet.UDPAddr, path *snet.Path) (*packets.Monit
 //	}
 //}
 
-func CloseConn(conn packets.MonitoredConn) error {
+func CloseConn(conn packets.QUICReliableConn) error {
 	return conn.InternalConn.Close()
 }
 
@@ -144,7 +147,7 @@ func (mp *MPPeerSock) Disconnect() []error {
 
 // DialPath This one should "activate" the connection over the respective path
 // or create one if its not there yet
-func (mp *MPPeerSock) DialPath(path *snet.Path) (*packets.MonitoredConn, error) {
+func (mp *MPPeerSock) DialPath(path *snet.Path) (*packets.QUICReliableConn, error) {
 	// copy mp.Peer to not interfere with other connections
 	connection, err := NewMonitoredConn(*mp.Peer, path)
 	if err != nil {
@@ -165,4 +168,20 @@ func (mp *MPPeerSock) DialAll(pathAlternatives *pathselection.PathSet) error {
 		mp.Connections = append(mp.Connections, *connection)
 	}
 	return nil
+}
+
+//
+// Added in 0.0.3
+//
+
+// Read from the peer over a specific path
+// Here the socket could decide from which path to read or we have to read from all
+func (mp MPPeerSock) ReadStream(b []byte) (int, error) {
+	return mp.PacketScheduler.ReadStream(b)
+}
+
+// Write to the peer over a specific path
+// Here the socket could decide over which path to write
+func (mp MPPeerSock) WriteStream(b []byte) (int, error) {
+	return mp.PacketScheduler.WriteStream(b)
 }
