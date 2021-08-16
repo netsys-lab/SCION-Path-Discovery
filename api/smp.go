@@ -95,10 +95,16 @@ func (mp MPPeerSock) AcceptPeer() (*snet.UDPAddr, error) {
 }
 
 func (mp MPPeerSock) StartPathSelection() {
+	// TODO: Nico/Karola: Implement metrics collection and path alg invocation
 	// We could put a timer here.
-	// Every X seconds we collect metrics from the packetScheduler
+	// Every X seconds we collect metrics from the underlaySocket and its connections
 	// and provide them for path selection
-	// Furthermore, a first pathset should be defined
+	// So in a timer call underlaysocket.GetConnections
+	// And write the measured metrics in the QualityDB
+	// Then you could invoke this the path selection algorithm
+	// And if this returns another pathset then currently active,
+	// one could invoke this event here...
+	// To connect over the new pathset, call mpSock.DialAll(pathset)
 	go func() {
 		mp.OnPathsetChange <- pathselection.PathSet{}
 	}()
@@ -161,7 +167,7 @@ func (mp *MPPeerSock) Connect(pathSetWrapper pathselection.CustomPathSelection) 
 }
 
 func (mp *MPPeerSock) Disconnect() []error {
-
+	mp.PacketScheduler.SetConnections(make([]packets.TransportConn, 0))
 	return mp.UnderlaySocket.CloseAll()
 }
 
@@ -189,7 +195,7 @@ func (mp *MPPeerSock) DialAll() error {
 }
 
 //
-// Added in 0.0.3
+// Added in 0.0.3 - WIP, not ready yet
 //
 
 // Read from the peer over a specific path

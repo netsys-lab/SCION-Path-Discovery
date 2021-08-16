@@ -77,6 +77,10 @@ func (s *SCIONSocket) DialAll(remote snet.UDPAddr, path []snet.Path) ([]packets.
 	return make([]packets.TransportConn, 0), nil
 }
 
+func (s *SCIONSocket) GetConnections() []packets.TransportConn {
+	return s.conns
+}
+
 func (s *SCIONSocket) CloseAll() []error {
 	errors := make([]error, 0)
 	for _, con := range s.conns {

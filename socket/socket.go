@@ -12,4 +12,5 @@ type UnderlaySocket interface {
 	Dial(remote snet.UDPAddr, path snet.Path) (packets.TransportConn, error)
 	DialAll(remote snet.UDPAddr, path []snet.Path) ([]packets.TransportConn, error)
 	CloseAll() []error
+	GetConnections() []packets.TransportConn
 }
