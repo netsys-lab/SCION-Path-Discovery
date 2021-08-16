@@ -18,13 +18,79 @@ type PacketScheduler interface {
 	Read([]byte) (int, error)
 	WriteStream([]byte) (int, error)
 	ReadStream([]byte) (int, error)
-	ConnectPeers() error
+	SetConnections([]TransportConn)
+	AddConnection(TransportConn)
+}
+
+func NewWeighedScheduler(local snet.UDPAddr) *WeighedScheduler {
+	weighedScheduler := WeighedScheduler{
+		local: local,
+	}
+
+	return &weighedScheduler
 }
 
 // Implements a PacketScheduler that calculates weights out of
 // PathQualities and sends packets depending on the weight of
 // each alternative
 type WeighedScheduler struct {
-	peers       []peers.PathlevelPeer
 	connections []TransportConn
+	local       snet.UDPAddr
+}
+
+/*func (ws *WeighedScheduler) Accept() (*peers.PathlevelPeer, error) {
+	conn := ws.transportConstructor()
+	err := conn.Listen(ws.local)
+	if err != nil {
+		return nil, err
+	}
+
+	peer, err := conn.Accept()
+	if err != nil {
+		return nil, err
+	}
+
+	return peer, nil
+}*/
+
+func (ws *WeighedScheduler) SetConnections(conns []TransportConn) {
+	ws.connections = conns
+}
+
+// TODO: Filter identical connections?
+func (ws *WeighedScheduler) AddConnection(conn TransportConn) {
+	ws.connections = append(ws.connections, conn)
+}
+
+/*func (ws *WeighedScheduler) SetPathlevelPeers(peers []peers.PathlevelPeer) error {
+	// TODO: Keep same connections open
+	for _, conn := range ws.connections {
+		err := conn.Close()
+		if err != nil {
+			return err
+		}
+	}
+
+	ws.connections = make([]TransportConn, 0)
+
+	for _, peer := range peers {
+		transportConn := ws.transportConstructor()
+		transportConn.Connect(peer.PeerAddr, &peer.PathQuality.Path)
+		ws.connections = append(ws.connections, transportConn)
+	}
+
+	return nil
+}*/
+
+func (ws *WeighedScheduler) Write([]byte) (int, error) {
+	return 0, nil
+}
+func (ws *WeighedScheduler) Read([]byte) (int, error) {
+	return 0, nil
+}
+func (ws *WeighedScheduler) WriteStream([]byte) (int, error) {
+	return 0, nil
+}
+func (ws *WeighedScheduler) ReadStream([]byte) (int, error) {
+	return 0, nil
 }

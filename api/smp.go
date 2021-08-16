@@ -4,6 +4,7 @@ import (
 	"github.com/netsec-ethz/scion-apps/pkg/appnet"
 	"github.com/netsys-lab/scion-path-discovery/packets"
 	"github.com/netsys-lab/scion-path-discovery/pathselection"
+	"github.com/netsys-lab/scion-path-discovery/socket"
 	"github.com/scionproto/scion/go/lib/snet"
 	// "github.com/netsys-lab/scion-multipath-lib/peers"
 )
@@ -48,24 +49,49 @@ const (
 // Each socket is bound to a specific peer
 // TODO: One socket that handles multiple peers? This could be done by a wrapper
 // that handles multiple MPPeerSocks
+// TODO: Make fields private that should be private...
 type MPPeerSock struct {
-	Peer                    *snet.UDPAddr
-	OnPathsetChange         chan pathselection.PathSet
-	Connections             []packets.MonitoredConn
-	FullPathset             []snet.Path
-	SelectedPathset         []snet.Path
-	Connections             []packets.QUICReliableConn
+	Peer            *snet.UDPAddr
+	OnPathsetChange chan pathselection.PathSet
+	Connections     []packets.MonitoredConn
+	FullPathset     []snet.Path
+	SelectedPathset []snet.Path
+	Connections     []packets.QUICReliableConn
+	Peer            *snet.UDPAddr
+	// Connections             []packets.QUICReliableConn
 	PathSelectionProperties []string // TODO: Design a real struct for this, string is only dummy
 	PacketScheduler         packets.PacketScheduler
 	Local                   string
+	UnderlaySocket          socket.UnderlaySocket
+	TransportConstructor    packets.TransportConstructor
 }
 
 func NewMPPeerSock(local string, peer *snet.UDPAddr) *MPPeerSock {
 	return &MPPeerSock{
-		Peer:            peer,
-		Local:           local,
-		OnPathsetChange: make(chan pathselection.PathSet),
+		Peer:                 peer,
+		Local:                local,
+		OnPathsetChange:      make(chan pathselection.PathSet),
+		TransportConstructor: packets.SCIONTransportConstructor,
+		UnderlaySocket:       socket.NewSCIONSocket(local, packets.SCIONTransportConstructor),
 	}
+}
+
+func (mp MPPeerSock) SetPeer(peer *snet.UDPAddr) {
+	mp.Peer = peer
+}
+
+func (mp MPPeerSock) Listen() error {
+	return mp.UnderlaySocket.Listen()
+}
+
+func (mp MPPeerSock) AcceptPeer() (*snet.UDPAddr, error) {
+	remote, conns, err := mp.UnderlaySocket.AcceptAll()
+	if err != nil {
+		return nil, err
+	}
+
+	mp.PacketScheduler.SetConnections(conns)
+	return remote, nil
 }
 
 func (mp MPPeerSock) StartPathSelection() {
@@ -135,19 +161,13 @@ func (mp *MPPeerSock) Connect(pathSetWrapper pathselection.CustomPathSelection) 
 }
 
 func (mp *MPPeerSock) Disconnect() []error {
-	var errs []error
-	for _, conn := range mp.Connections {
-		err := CloseConn(conn)
-		if err != nil {
-			errs = append(errs, err)
-		}
-	}
-	return errs
+
+	return mp.UnderlaySocket.CloseAll()
 }
 
 // DialPath This one should "activate" the connection over the respective path
 // or create one if its not there yet
-func (mp *MPPeerSock) DialPath(path *snet.Path) (*packets.QUICReliableConn, error) {
+/*func (mp *MPPeerSock) DialPath(path *snet.Path) (*packets.QUICReliableConn, error) {
 	// copy mp.Peer to not interfere with other connections
 	connection, err := NewMonitoredConn(*mp.Peer, path)
 	if err != nil {
@@ -155,18 +175,16 @@ func (mp *MPPeerSock) DialPath(path *snet.Path) (*packets.QUICReliableConn, erro
 	}
 	return connection, nil
 }
-
-// DialAll Could call dialPath for all paths. However, not the connections over included
+*/
+// Could call dialPath for all paths. However, not the connections over included
 // should be idled or closed here
-func (mp *MPPeerSock) DialAll(pathAlternatives *pathselection.PathSet) error {
-	for _, p := range pathAlternatives.Paths {
-		path := &p.Path
-		connection, err := mp.DialPath(path)
-		if err != nil {
-			return err
-		}
-		mp.Connections = append(mp.Connections, *connection)
+func (mp *MPPeerSock) DialAll() error {
+	conns, err := mp.UnderlaySocket.DialAll(*mp.Peer, mp.SelectedPathset)
+	if err != nil {
+		return err
 	}
+
+	mp.PacketScheduler.SetConnections(conns)
 	return nil
 }
 

@@ -1,9 +1,15 @@
 package socket
 
-import "net"
+import (
+	"github.com/netsys-lab/scion-path-discovery/packets"
+	"github.com/scionproto/scion/go/lib/snet"
+)
 
-// TODO: extend this further. It may be useful to use more than
-// one native UDP socket due to performance limitations
-type Socket interface {
-	net.Conn
+type UnderlaySocket interface {
+	Listen() error
+	Accept() (packets.TransportConn, error)
+	AcceptAll() (*snet.UDPAddr, []packets.TransportConn, error)
+	Dial(remote snet.UDPAddr, path snet.Path) (packets.TransportConn, error)
+	DialAll(remote snet.UDPAddr, path []snet.Path) ([]packets.TransportConn, error)
+	CloseAll() []error
 }

@@ -7,6 +7,14 @@ import (
 	"github.com/scionproto/scion/go/lib/snet"
 )
 
+var _ TransportConn = (*SCIONConn)(nil)
+
+// var _ TransportConstructor = SCIONTransportConstructor
+
+func SCIONTransportConstructor() TransportConn {
+	return &SCIONConn{}
+}
+
 // This one extends a SCION connection to collect metrics for each connection
 // Since a connection has always one path, the metrics are also path metrics
 // 0.0.3: Collecting metrics for read and written bytes is better at a place
@@ -71,9 +79,6 @@ func (sc *SCIONConn) Close() error {
 	return sc.internalConn.Close()
 }
 
-func (sc *SCIONConn) GetPath() *snet.Path {
-	return sc.path
-}
 func (sc *SCIONConn) GetMetrics() *PacketMetrics {
 	return &sc.metrics
 }

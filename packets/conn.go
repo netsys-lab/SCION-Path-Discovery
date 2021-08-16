@@ -13,9 +13,11 @@ type TransportConn interface {
 	Write([]byte) (int, error)
 	Read([]byte) (int, error)
 	Listen(snet.UDPAddr) error
+	// Accept() (*peers.PathlevelPeer, error)
+
 	Connect(snet.UDPAddr, *snet.Path) error
 	Close() error
-	GetPath() *snet.Path
+	// GetPeer() *peers.PathlevelPeer
 	GetMetrics() *PacketMetrics
 }
 
@@ -24,3 +26,5 @@ type ReliableTransportConn interface {
 	WriteStream([]byte) (int, error)
 	ReadStream([]byte) (int, error)
 }
+
+type TransportConstructor func() TransportConn

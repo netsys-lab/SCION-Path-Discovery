@@ -1,20 +1,7 @@
 package packets
 
-import (
-	"crypto/tls"
-	"encoding/binary"
-	"io"
-	"net"
-
-	"github.com/lucas-clemente/quic-go"
-	"github.com/netsec-ethz/scion-apps/pkg/appnet/appquic"
-	"github.com/scionproto/scion/go/lib/snet"
-)
-
-// This one extends a SCION connection to collect metrics for each connection
-// Since a connection has always one path, the metrics are also path metrics
-// 0.0.3: Collecting metrics for read and written bytes is better at a place
-// where both information are available, so we put it here, not obsolete
+/*
+// TODO: Implement SCION/QUIC here
 type QUICReliableConn struct { // Former: MonitoredConn
 	internalConn *quic.Stream
 	path         *snet.Path
@@ -95,3 +82,4 @@ func (qc *QUICReliableConn) Listen(snet.UDPAddr) {
 	)
 
 }
+*/
