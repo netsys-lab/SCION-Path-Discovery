@@ -21,6 +21,6 @@ func (pathSet byHopCount) Less(i, j int) bool {
 
 // GetPathSmallHopCount Select the shortest paths from given path array
 func (pathSet *PathSet) GetPathSmallHopCount() snet.Path {
-	sort.Sort(byMTU(pathSet.Paths))
-	return SelectPaths(1, pathSet)[0]
+	sort.Sort(byHopCount(pathSet.Paths))
+	return SelectPaths(1, pathSet.Paths)[0]
 }

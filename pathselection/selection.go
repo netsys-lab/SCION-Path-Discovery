@@ -13,7 +13,17 @@ type PathSet struct {
 	Paths   []PathQuality
 }
 
+func (pathSet *PathSet) GetPathSet(udpAddr snet.UDPAddr) (PathSet, error) {
+	panic("implement me")
+}
 
+func (pathSet *PathSet) AddPathAlternatives(set PathSet) error {
+	panic("implement me")
+}
+
+func (pathSet *PathSet) AddPathQuality(quality PathQuality) error {
+	panic("implement me")
+}
 
 func (pathSet *PathSet) GetPathFunc(hostAddr addr.HostAddr, f func(PathQuality, PathQuality) PathQuality) snet.Path {
 	panic("implement me")
@@ -45,6 +55,9 @@ type QualityDB interface {
 	GetPathLowLatency() snet.Path
 	GetPathLargeMTU() snet.Path
 	GetPathSmallHopCount() snet.Path
+
+	GetPathSet(snet.UDPAddr) (PathSet, error)
+
 	//GetPathFunc takes as second argument a function that is
 	//then called recursively over all PathQuality pairs, always
 	//retaining the returned result as the first input for the
@@ -68,12 +81,12 @@ type MeasuringReaderWriter interface {
 }
 
 func NewPathSet() QualityDB {
-	//return &PathSet{}
-	return nil
+	return &PathSet{}
+	//return nil
 }
 
-func SelectPaths(count int, pathSet *PathSet) (selectedPathSet []snet.Path) {
-	lenPaths := len(pathSet.Paths)
+func SelectPaths(count int, paths []PathQuality) (selectedPathSet []snet.Path) {
+	lenPaths := len(paths)
 	numPathsToReturn := 0
 	if lenPaths > 0 {
 		if lenPaths < count {
@@ -82,7 +95,7 @@ func SelectPaths(count int, pathSet *PathSet) (selectedPathSet []snet.Path) {
 			numPathsToReturn = count
 		}
 		for i := 0; i < numPathsToReturn; i++ {
-			selectedPathSet = append(selectedPathSet, pathSet.Paths[i].Path)
+			selectedPathSet = append(selectedPathSet, paths[i].Path)
 		}
 	}
 	return selectedPathSet

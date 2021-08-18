@@ -7,21 +7,26 @@ import (
 
 type byMTU []PathQuality
 
-func (pathSet byMTU) Len() int {
-	return len(pathSet)
+func (pathQualities byMTU) Len() int {
+	return len(pathQualities)
 }
 
-func (pathSet byMTU) Swap(i, j int) {
-	pathSet[i].Path, pathSet[j].Path = pathSet[j].Path, pathSet[i].Path
+func (pathQualities byMTU) Swap(i, j int) {
+	pathQualities[i].Path, pathQualities[j].Path = pathQualities[j].Path, pathQualities[i].Path
 }
 
-func (pathSet byMTU) Less(i, j int) bool {
+func (pathQualities byMTU) Less(i, j int) bool {
 	// switched so that lager MTUs are at index 0
-	return pathSet[i].Path.Metadata().MTU > pathSet[j].Path.Metadata().MTU
+	return pathQualities[i].Path.Metadata().MTU > pathQualities[j].Path.Metadata().MTU
 }
 
-// GetPathLargeMTU Select the paths from given path array with largest MTU
 func (pathSet *PathSet) GetPathLargeMTU() snet.Path {
-	sort.Sort(byMTU(pathSet.Paths))
-	return SelectPaths(1, pathSet)[0]
+	return WIP_GetPathLargeMTU(pathSet.Paths)
+}
+
+
+
+func WIP_GetPathLargeMTU(paths []PathQuality) snet.Path {
+	sort.Sort(byMTU(paths))
+	return SelectPaths(1, paths)[0]
 }
