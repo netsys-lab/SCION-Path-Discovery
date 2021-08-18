@@ -21,5 +21,5 @@ func (pathSet byBandwidth) Less(i, j int) bool {
 
 // GetPathHighBandwidth Select the shortest paths from given path array
 func (pathSet *PathSet) GetPathHighBandwidth() snet.Path {
-	return SelectPaths(1, pathSet)[0]
+	return SelectPaths(1, pathSet.Paths)[0]
 }

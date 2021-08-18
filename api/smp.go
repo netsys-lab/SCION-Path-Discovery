@@ -97,7 +97,7 @@ func (mp MPPeerSock) Write(b []byte) (int, error) {
 	return 0, nil
 }
 
-type selAlg func(pathselection.PathSet) (pathselection.PathSet, error)
+type selAlg func(snet.UDPAddr, []pathselection.PathQuality) ([]pathselection.PathQuality, error)
 
 func NewMonitoredConn(snetUDPAddr snet.UDPAddr, path *snet.Path) (*packets.MonitoredConn, error) {
 	appnet.SetPath(&snetUDPAddr, *path)
@@ -126,7 +126,6 @@ func CloseConn(conn packets.MonitoredConn) error {
 // Connect A first approach could be to open connections over all
 // Paths to later reduce time effort for switching paths
 func (mp *MPPeerSock) Connect(customPathSelection selAlg) error {
-	// mp.StartPathSelection()
 	var err error
 	snetUDPAddr := mp.Peer
 
@@ -143,11 +142,11 @@ func (mp *MPPeerSock) Connect(customPathSelection selAlg) error {
 		fullPathset.Paths = append(fullPathset.Paths, pathEntry)
 	}
 
-	pathAlternativesSubSet, err := customPathSelection(fullPathset)
+	pathAlternativesSubSet, err := customPathSelection(*snetUDPAddr, fullPathset.Paths)
 
 	pathAlternatives := pathselection.PathSet{
 		Address: *snetUDPAddr,
-		Paths:   pathAlternativesSubSet.Paths,
+		Paths:   pathAlternativesSubSet,
 	}
 
 	err = mp.DialAll(pathAlternatives)

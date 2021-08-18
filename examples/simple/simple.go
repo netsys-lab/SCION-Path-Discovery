@@ -9,13 +9,18 @@ import (
 	"github.com/scionproto/scion/go/lib/snet"
 )
 
-func customPathSelectAlg(pathSet pathselection.PathSet) (pathsToReturn pathselection.PathSet, err error) {
+func customPathSelectAlg(address snet.UDPAddr, pathQualities []pathselection.PathQuality) ([]pathselection.PathQuality, error) {
+	pathselection.WIP_GetPathLargeMTU(pathQualities)
+
+
+
 	//shortestPathSubSet := pathselection.SelectShortestPaths(5, pathSet.Paths)
 	//fastestPathSubSet := pathselection.SelectLowestLatencies(3, shortestPathSubSet)
 
-	shortestPathSubSet := pathSet.GetPathLowLatency()
-	pathsToReturn.Paths = append(pathsToReturn.Paths, pathselection.PathQuality{Path: shortestPathSubSet})
-	return pathsToReturn, nil
+	//shortestPathSubSet := pathSet.GetPathLowLatency()
+	//pathsToReturn.Paths = append(pathsToReturn.Paths, pathselection.PathQuality{Path: shortestPathSubSet})
+	//return pathsToReturn, nil
+	return nil, nil
 }
 
 func main() {
