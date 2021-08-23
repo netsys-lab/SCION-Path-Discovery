@@ -9,25 +9,29 @@ import (
 	"github.com/scionproto/scion/go/lib/snet"
 )
 
-//NewCurrentSelection should be in selection.go
+//#####################################################################################################################################
+
+//NewCurrentSelection
+//TODO should be in selection.go so users do not have to implement it themselves
 func NewCurrentSelection(pathSet pathselection.PathSet) (*pathselection.PathSet, error) {
 	asdf := CurrentSelection{pathSet}
 	qwer, nil := asdf.CustomPathSelectAlg()
 	return qwer, nil
 }
 
-
-
+//CurrentSelection this struct can stay in here, user could add more fields
 type CurrentSelection struct {
 	PathSet pathselection.PathSet
 }
 
+//CustomPathSelectAlg this is where the user actually wants to implement its logic in
 func (currSel CurrentSelection) CustomPathSelectAlg() (*pathselection.PathSet, error) {
 	newPathSet := currSel.PathSet.GetPathLargeMTU(3)
 	newPathSet.GetPathLargeMTU(3)
 	return newPathSet, nil
 }
 
+//customPathSelectAlg legacy, only for line 64
 func customPathSelectAlg(snet.UDPAddr, []pathselection.PathQuality) ([]pathselection.PathQuality, error) {
 	return nil, nil
 }
@@ -39,12 +43,10 @@ func main() {
 	}
 	selectedPathSet, err := NewCurrentSelection(fullPathSet)
 
-
-
-
-
+	// only so that selectedPathSet is used
 	selectedPathSet.GetPathLargeMTU(5)
 
+//#####################################################################################################################################
 
 
 
