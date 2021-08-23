@@ -13,15 +13,7 @@ type PathSet struct {
 	Paths   []PathQuality
 }
 
-func (pathSet *PathSet) GetPathSet(udpAddr snet.UDPAddr) (PathSet, error) {
-	panic("implement me")
-}
-
-func (pathSet *PathSet) AddPathAlternatives(set PathSet) error {
-	panic("implement me")
-}
-
-func (pathSet *PathSet) AddPathQuality(quality PathQuality) error {
+func GetPathSet(udpAddr snet.UDPAddr) (PathSet, error) {
 	panic("implement me")
 }
 
@@ -32,8 +24,6 @@ func (pathSet *PathSet) GetPathFunc(hostAddr addr.HostAddr, f func(PathQuality, 
 func (pathSet *PathSet) GetPathCustom(hostAddr addr.HostAddr, f func([]PathQuality) PathQuality) snet.Path {
 	panic("implement me")
 }
-
-
 
 type PathEnumerator interface {
 	Enumerate(addr.HostAddr) PathSet
@@ -51,12 +41,10 @@ type PathQuality struct {
 }
 
 type QualityDB interface {
-	GetPathHighBandwidth() snet.Path
-	GetPathLowLatency() snet.Path
-	GetPathLargeMTU() snet.Path
-	GetPathSmallHopCount() snet.Path
-
-	GetPathSet(snet.UDPAddr) (PathSet, error)
+	GetPathHighBandwidth(number int) PathSet
+	GetPathLowLatency(number int) PathSet
+	GetPathLargeMTU(number int) PathSet
+	GetPathSmallHopCount(number int) PathSet
 
 	//GetPathFunc takes as second argument a function that is
 	//then called recursively over all PathQuality pairs, always
@@ -69,9 +57,6 @@ type QualityDB interface {
 	//paths for the host address. The path associated with the
 	//returned PathQuality is then returned
 	GetPathCustom(addr.HostAddr, func([]PathQuality) PathQuality) snet.Path
-
-	AddPathAlternatives(PathSet) error
-	AddPathQuality(PathQuality) error
 }
 
 type MeasuringReaderWriter interface {
@@ -81,12 +66,12 @@ type MeasuringReaderWriter interface {
 }
 
 func NewPathSet() QualityDB {
-	return &PathSet{}
-	//return nil
+	//return &PathSet{}
+	return nil
 }
 
-func SelectPaths(count int, paths []PathQuality) (selectedPathSet []snet.Path) {
-	lenPaths := len(paths)
+func SelectPaths(count int, pathSet *PathSet) (newPathSet *PathSet) {
+	lenPaths := len(pathSet.Paths)
 	numPathsToReturn := 0
 	if lenPaths > 0 {
 		if lenPaths < count {
@@ -95,8 +80,29 @@ func SelectPaths(count int, paths []PathQuality) (selectedPathSet []snet.Path) {
 			numPathsToReturn = count
 		}
 		for i := 0; i < numPathsToReturn; i++ {
-			selectedPathSet = append(selectedPathSet, paths[i].Path)
+			newPathSet.Paths = append(newPathSet.Paths, pathSet.Paths[i])
 		}
 	}
-	return selectedPathSet
+	return newPathSet
 }
+
+
+
+
+
+
+
+
+type CustomPathSelection interface {
+	CustomPathSelectAlg() (PathSet, error)
+}
+
+//func NewCurrentSelection(pathSet pathselection.PathSet) (*pathselection.PathSet, error) {
+//	asdf := CurrentSelection{pathSet}
+//	qwer, nil := asdf.CustomPathSelectAlg()
+//	return qwer, nil
+//}
+
+//type CurrentSelection struct {
+//	PathSet PathSet
+//}

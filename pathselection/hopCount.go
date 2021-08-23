@@ -1,7 +1,6 @@
 package pathselection
 
 import (
-	"github.com/scionproto/scion/go/lib/snet"
 	"sort"
 )
 
@@ -20,7 +19,7 @@ func (pathSet byHopCount) Less(i, j int) bool {
 }
 
 // GetPathSmallHopCount Select the shortest paths from given path array
-func (pathSet *PathSet) GetPathSmallHopCount() snet.Path {
+func (pathSet *PathSet) GetPathSmallHopCount(number int) *PathSet {
 	sort.Sort(byHopCount(pathSet.Paths))
-	return SelectPaths(1, pathSet.Paths)[0]
+	return SelectPaths(number, pathSet)
 }
