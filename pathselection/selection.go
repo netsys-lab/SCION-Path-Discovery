@@ -92,7 +92,9 @@ func SelectPaths(count int, pathSet *PathSet) (newPathSet *PathSet) {
 
 
 
+//#####################################################################################################################################
 
+//CustomPathSelection should this be here???
 type CustomPathSelection interface {
 	CustomPathSelectAlg() (PathSet, error)
 }
@@ -103,6 +105,4 @@ type CustomPathSelection interface {
 //	return qwer, nil
 //}
 
-//type CurrentSelection struct {
-//	PathSet PathSet
-//}
+//#####################################################################################################################################
