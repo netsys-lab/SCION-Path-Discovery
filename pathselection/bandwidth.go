@@ -1,9 +1,5 @@
 package pathselection
 
-import (
-	"github.com/scionproto/scion/go/lib/snet"
-)
-
 type byBandwidth []PathQuality
 
 func (pathSet byBandwidth) Len() int {
@@ -20,6 +16,6 @@ func (pathSet byBandwidth) Less(i, j int) bool {
 }
 
 // GetPathHighBandwidth Select the shortest paths from given path array
-func (pathSet *PathSet) GetPathHighBandwidth() snet.Path {
-	return SelectPaths(1, pathSet.Paths)[0]
+func (pathSet *PathSet) GetPathHighBandwidth(number int) *PathSet {
+	return SelectPaths(number, pathSet)
 }

@@ -1,7 +1,6 @@
 package pathselection
 
 import (
-	"github.com/scionproto/scion/go/lib/snet"
 	"sort"
 	"time"
 )
@@ -31,7 +30,7 @@ func sumupLatencies(latencies []time.Duration) (totalLatency time.Duration) {
 }
 
 // GetPathLowLatency Select the paths from given path array with lowest total latency
-func (pathSet *PathSet) GetPathLowLatency() snet.Path {
+func (pathSet *PathSet) GetPathLowLatency(number int) *PathSet {
 	sort.Sort(byLatency(pathSet.Paths))
-	return SelectPaths(1, pathSet.Paths)[0]
+	return SelectPaths(number, pathSet)
 }

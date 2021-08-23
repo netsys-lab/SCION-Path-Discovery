@@ -1,7 +1,6 @@
 package pathselection
 
 import (
-	"github.com/scionproto/scion/go/lib/snet"
 	"sort"
 )
 
@@ -20,13 +19,7 @@ func (pathQualities byMTU) Less(i, j int) bool {
 	return pathQualities[i].Path.Metadata().MTU > pathQualities[j].Path.Metadata().MTU
 }
 
-func (pathSet *PathSet) GetPathLargeMTU() snet.Path {
-	return WIP_GetPathLargeMTU(pathSet.Paths)
-}
-
-
-
-func WIP_GetPathLargeMTU(paths []PathQuality) snet.Path {
-	sort.Sort(byMTU(paths))
-	return SelectPaths(1, paths)[0]
+func (pathSet *PathSet) GetPathLargeMTU(number int) *PathSet {
+	sort.Sort(byMTU(pathSet.Paths))
+	return SelectPaths(number, pathSet)
 }

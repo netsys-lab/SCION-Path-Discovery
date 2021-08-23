@@ -9,21 +9,46 @@ import (
 	"github.com/scionproto/scion/go/lib/snet"
 )
 
-func customPathSelectAlg(address snet.UDPAddr, pathQualities []pathselection.PathQuality) ([]pathselection.PathQuality, error) {
-	pathselection.WIP_GetPathLargeMTU(pathQualities)
+//NewCurrentSelection should be in selection.go
+func NewCurrentSelection(pathSet pathselection.PathSet) (*pathselection.PathSet, error) {
+	asdf := CurrentSelection{pathSet}
+	qwer, nil := asdf.CustomPathSelectAlg()
+	return qwer, nil
+}
 
 
 
-	//shortestPathSubSet := pathselection.SelectShortestPaths(5, pathSet.Paths)
-	//fastestPathSubSet := pathselection.SelectLowestLatencies(3, shortestPathSubSet)
+type CurrentSelection struct {
+	PathSet pathselection.PathSet
+}
 
-	//shortestPathSubSet := pathSet.GetPathLowLatency()
-	//pathsToReturn.Paths = append(pathsToReturn.Paths, pathselection.PathQuality{Path: shortestPathSubSet})
-	//return pathsToReturn, nil
+func (currSel CurrentSelection) CustomPathSelectAlg() (*pathselection.PathSet, error) {
+	newPathSet := currSel.PathSet.GetPathLargeMTU(3)
+	newPathSet.GetPathLargeMTU(3)
+	return newPathSet, nil
+}
+
+func customPathSelectAlg(snet.UDPAddr, []pathselection.PathQuality) ([]pathselection.PathQuality, error) {
 	return nil, nil
 }
 
 func main() {
+	fullPathSet, err := pathselection.GetPathSet(snet.UDPAddr{})
+	if err != nil {
+		return
+	}
+	selectedPathSet, err := NewCurrentSelection(fullPathSet)
+
+
+
+
+
+	selectedPathSet.GetPathLargeMTU(5)
+
+
+
+
+
 	peers := []string{"18-ffaa:1:ef8,[127.0.0.1]:12345", "peer2", "peer3"} // Later real addresses
 	local := "peer0"
 	var parsedPeers []*snet.UDPAddr
