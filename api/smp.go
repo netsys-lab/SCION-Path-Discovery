@@ -1,9 +1,6 @@
 package smp
 
 import (
-	"context"
-	"fmt"
-
 	"github.com/netsec-ethz/scion-apps/pkg/appnet"
 	"github.com/netsys-lab/scion-path-discovery/packets"
 	"github.com/netsys-lab/scion-path-discovery/pathselection"
@@ -97,8 +94,6 @@ func (mp MPPeerSock) Write(b []byte) (int, error) {
 	return 0, nil
 }
 
-type selAlg func(snet.UDPAddr, []pathselection.PathQuality) ([]pathselection.PathQuality, error)
-
 func NewMonitoredConn(snetUDPAddr snet.UDPAddr, path *snet.Path) (*packets.MonitoredConn, error) {
 	appnet.SetPath(&snetUDPAddr, *path)
 	conn, err := appnet.DialAddr(&snetUDPAddr)
@@ -125,36 +120,13 @@ func CloseConn(conn packets.MonitoredConn) error {
 
 // Connect A first approach could be to open connections over all
 // Paths to later reduce time effort for switching paths
-func (mp *MPPeerSock) Connect(customPathSelection selAlg) error {
-	var err error
-	snetUDPAddr := mp.Peer
-
-	fps, err := appnet.DefNetwork().PathQuerier.Query(context.Background(), snetUDPAddr.IA)
-	fullPathset := pathselection.PathSet{Address: *snetUDPAddr}
-
-	if err != nil {
-		return err
-	}
-
-	for i, path := range fps {
-		fmt.Printf("Path %d: %+v\n", i, path)
-		pathEntry := pathselection.PathQuality{Path: path}
-		fullPathset.Paths = append(fullPathset.Paths, pathEntry)
-	}
-
-	pathAlternativesSubSet, err := customPathSelection(*snetUDPAddr, fullPathset.Paths)
-
-	pathAlternatives := pathselection.PathSet{
-		Address: *snetUDPAddr,
-		Paths:   pathAlternativesSubSet,
-	}
-
-	err = mp.DialAll(pathAlternatives)
+func (mp *MPPeerSock) Connect(pathSet pathselection.PathSet) error {
+	err := mp.DialAll(pathSet)
 	if err != nil {
 		return err
 	}
 	// mp.Connections[0].Write([]byte("Hello World!\n"))
-	mp.OnPathsetChange <- pathAlternatives
+	//mp.OnPathsetChange <- pathAlternatives
 	return nil
 }
 
