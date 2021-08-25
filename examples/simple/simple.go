@@ -9,59 +9,35 @@ import (
 	"github.com/scionproto/scion/go/lib/snet"
 )
 
-//#####################################################################################################################################
-
-//NewCurrentSelection
-//TODO should be in selection.go so users do not have to implement it themselves
-func NewCurrentSelection(pathSet pathselection.PathSet) (*pathselection.PathSet, error) {
-	asdf := CurrentSelection{pathSet}
-	qwer, nil := asdf.CustomPathSelectAlg()
-	return qwer, nil
-}
-
-//CurrentSelection this struct can stay in here, user could add more fields
+//CurrentSelection this struct can stay in here, users could add more fields
 type CurrentSelection struct {
 	PathSet pathselection.PathSet
 }
 
-//CustomPathSelectAlg this is where the user actually wants to implement its logic in
-func (currSel CurrentSelection) CustomPathSelectAlg() (*pathselection.PathSet, error) {
-	newPathSet := currSel.PathSet.GetPathLargeMTU(3)
-	newPathSet.GetPathLargeMTU(3)
-	return newPathSet, nil
+// NewFullPathSet contain all initially available paths
+func NewFullPathSet(addr *snet.UDPAddr) (CurrentSelection, error) {
+	return CurrentSelection{pathselection.QueryPaths(addr)}, nil
 }
 
-//customPathSelectAlg legacy, only for line 64
-func customPathSelectAlg(snet.UDPAddr, []pathselection.PathQuality) ([]pathselection.PathQuality, error) {
-	return nil, nil
+//CustomPathSelectAlg this is where the user actually wants to implement its logic in
+func (currSel *CurrentSelection) CustomPathSelectAlg() {
+	currSel.PathSet.GetPathLargeMTU(3)
 }
+
+
 
 func main() {
-	fullPathSet, err := pathselection.GetPathSet(snet.UDPAddr{})
-	if err != nil {
-		return
-	}
-	selectedPathSet, err := NewCurrentSelection(fullPathSet)
-
-	// only so that selectedPathSet is used
-	selectedPathSet.GetPathLargeMTU(5)
-
-//#####################################################################################################################################
-
-
-
-
 	peers := []string{"18-ffaa:1:ef8,[127.0.0.1]:12345", "peer2", "peer3"} // Later real addresses
 	local := "peer0"
-	var parsedPeers []*snet.UDPAddr
 	for _, peer := range peers {
-		parsedPeer, _ := snet.ParseUDPAddr(peer)
-		parsedPeers = append(parsedPeers, parsedPeer)
-	}
-
-	for _, peer := range parsedPeers {
-		mpSock := smp.NewMPPeerSock(local, peer)
-		err := mpSock.Connect(customPathSelectAlg)
+		parsedAddr, _ := snet.ParseUDPAddr(peer)
+		currentSelection, err := NewFullPathSet(parsedAddr)
+		if err != nil {
+			return
+		}
+		mpSock := smp.NewMPPeerSock(local, parsedAddr)
+		currentSelection.CustomPathSelectAlg()
+		err = mpSock.Connect(currentSelection.PathSet)
 		if err != nil {
 			log.Fatal("Failed to connect MPPeerSock", err)
 		}

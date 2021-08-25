@@ -1,6 +1,8 @@
 package pathselection
 
 import (
+	"context"
+	"github.com/netsec-ethz/scion-apps/pkg/appnet"
 	"io"
 	"time"
 
@@ -8,13 +10,16 @@ import (
 	"github.com/scionproto/scion/go/lib/snet"
 )
 
+var PathSetDB []PathSet
+
 type PathSet struct {
 	Address snet.UDPAddr
 	Paths   []PathQuality
 }
 
 func GetPathSet(udpAddr snet.UDPAddr) (PathSet, error) {
-	panic("implement me")
+	i := 0
+	return PathSetDB[i], nil
 }
 
 func (pathSet *PathSet) GetPathFunc(hostAddr addr.HostAddr, f func(PathQuality, PathQuality) PathQuality) snet.Path {
@@ -86,23 +91,18 @@ func SelectPaths(count int, pathSet *PathSet) (newPathSet *PathSet) {
 	return newPathSet
 }
 
-
-
-
-
-
-
-//#####################################################################################################################################
-
-//CustomPathSelection should this be here???
 type CustomPathSelection interface {
-	CustomPathSelectAlg() (PathSet, error)
+	CustomPathSelectAlg()
 }
 
-//func NewCurrentSelection(pathSet pathselection.PathSet) (*pathselection.PathSet, error) {
-//	asdf := CurrentSelection{pathSet}
-//	qwer, nil := asdf.CustomPathSelectAlg()
-//	return qwer, nil
-//}
-
-//#####################################################################################################################################
+func QueryPaths(addr *snet.UDPAddr) PathSet {
+	paths, _ := appnet.DefNetwork().PathQuerier.Query(context.Background(), addr.IA)
+	var pathQualities []PathQuality
+	for _, path := range paths {
+		pathEntry := PathQuality{Path: path}
+		pathQualities = append(pathQualities, pathEntry)
+	}
+	tmpPathSet := PathSet{Address: *addr, Paths: pathQualities}
+	PathSetDB = append(PathSetDB, tmpPathSet)
+	return tmpPathSet
+}
