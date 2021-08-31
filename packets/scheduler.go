@@ -1,7 +1,10 @@
 package packets
 
 import (
+	"errors"
+
 	"github.com/netsys-lab/scion-path-discovery/peers"
+
 	"github.com/scionproto/scion/go/lib/snet"
 )
 
@@ -18,12 +21,12 @@ type PacketScheduler interface {
 	Read([]byte) (int, error)
 	WriteStream([]byte) (int, error)
 	ReadStream([]byte) (int, error)
-	SetConnections([]TransportConn)
-	AddConnection(TransportConn)
+	SetConnections([]UDPConn)
+	AddConnection(UDPConn)
 }
 
-func NewWeighedScheduler(local snet.UDPAddr) *WeighedScheduler {
-	weighedScheduler := WeighedScheduler{
+func NewWeighedScheduler(local snet.UDPAddr) *SampleFirstPathScheduler {
+	weighedScheduler := SampleFirstPathScheduler{
 		local: local,
 	}
 
@@ -33,8 +36,8 @@ func NewWeighedScheduler(local snet.UDPAddr) *WeighedScheduler {
 // Implements a PacketScheduler that calculates weights out of
 // PathQualities and sends packets depending on the weight of
 // each alternative
-type WeighedScheduler struct {
-	connections []TransportConn
+type SampleFirstPathScheduler struct {
+	connections []UDPConn
 	local       snet.UDPAddr
 }
 
@@ -53,12 +56,12 @@ type WeighedScheduler struct {
 	return peer, nil
 }*/
 
-func (ws *WeighedScheduler) SetConnections(conns []TransportConn) {
+func (ws *SampleFirstPathScheduler) SetConnections(conns []UDPConn) {
 	ws.connections = conns
 }
 
 // TODO: Filter identical connections?
-func (ws *WeighedScheduler) AddConnection(conn TransportConn) {
+func (ws *SampleFirstPathScheduler) AddConnection(conn UDPConn) {
 	ws.connections = append(ws.connections, conn)
 }
 
@@ -82,15 +85,27 @@ func (ws *WeighedScheduler) AddConnection(conn TransportConn) {
 	return nil
 }*/
 
-func (ws *WeighedScheduler) Write([]byte) (int, error) {
-	return 0, nil
+func (ws *SampleFirstPathScheduler) Write(data []byte) (int, error) {
+	if len(ws.connections) < 1 {
+		return 0, errors.New("No connection available to write")
+	}
+	return ws.connections[0].Write(data)
 }
-func (ws *WeighedScheduler) Read([]byte) (int, error) {
-	return 0, nil
+func (ws *SampleFirstPathScheduler) Read(data []byte) (int, error) {
+	if len(ws.connections) < 1 {
+		return 0, errors.New("No connection available to read")
+	}
+	return ws.connections[0].Read(data)
 }
-func (ws *WeighedScheduler) WriteStream([]byte) (int, error) {
-	return 0, nil
+func (ws *SampleFirstPathScheduler) WriteStream(data []byte) (int, error) {
+	if len(ws.connections) < 1 {
+		return 0, errors.New("No connection available to writeStrean")
+	}
+	return ws.connections[0].WriteStream(data)
 }
-func (ws *WeighedScheduler) ReadStream([]byte) (int, error) {
-	return 0, nil
+func (ws *SampleFirstPathScheduler) ReadStream(data []byte) (int, error) {
+	if len(ws.connections) < 1 {
+		return 0, errors.New("No connection available to readStream")
+	}
+	return ws.connections[0].ReadStream(data)
 }

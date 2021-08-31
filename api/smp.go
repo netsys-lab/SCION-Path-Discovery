@@ -167,7 +167,7 @@ func (mp *MPPeerSock) Connect(pathSetWrapper pathselection.CustomPathSelection) 
 }
 
 func (mp *MPPeerSock) Disconnect() []error {
-	mp.PacketScheduler.SetConnections(make([]packets.TransportConn, 0))
+	mp.PacketScheduler.SetConnections(make([]packets.UDPConn, 0))
 	return mp.UnderlaySocket.CloseAll()
 }
 

@@ -9,22 +9,17 @@ const (
 	PACKET_SIZE = 1400
 )
 
-type TransportConn interface {
+type UDPConn interface {
 	Write([]byte) (int, error)
 	Read([]byte) (int, error)
 	Listen(snet.UDPAddr) error
-	// Accept() (*peers.PathlevelPeer, error)
-
-	Connect(snet.UDPAddr, *snet.Path) error
+	Dial(snet.UDPAddr, *snet.Path) error
 	Close() error
-	// GetPeer() *peers.PathlevelPeer
 	GetMetrics() *PacketMetrics
-}
-
-type ReliableTransportConn interface {
-	TransportConn
+	GetPath() *snet.Path
+	GetRemote() *snet.UDPAddr
 	WriteStream([]byte) (int, error)
 	ReadStream([]byte) (int, error)
 }
 
-type TransportConstructor func() TransportConn
+type TransportConstructor func() UDPConn

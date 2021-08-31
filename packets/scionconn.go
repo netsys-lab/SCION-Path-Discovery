@@ -7,11 +7,11 @@ import (
 	"github.com/scionproto/scion/go/lib/snet"
 )
 
-var _ TransportConn = (*SCIONConn)(nil)
+var _ UDPConn = (*SCIONConn)(nil)
 
 // var _ TransportConstructor = SCIONTransportConstructor
 
-func SCIONTransportConstructor() TransportConn {
+func SCIONTransportConstructor() UDPConn {
 	return &SCIONConn{}
 }
 
@@ -25,6 +25,29 @@ type SCIONConn struct { // Former: MonitoredConn
 	peer         string
 	state        int // See Connection States
 	metrics      PacketMetrics
+	remote       *snet.UDPAddr
+}
+
+// This simply wraps conn.Read and will later collect metrics
+func (sc *SCIONConn) ReadStream(b []byte) (int, error) {
+	n, err := sc.internalConn.Read(b)
+	if err != nil {
+		return n, err
+	}
+	sc.metrics.ReadBytes += int64(n)
+	sc.metrics.ReadPackets++
+	return n, err
+}
+
+// This simply wraps conn.Write and will later collect metrics
+func (sc *SCIONConn) WriteStream(b []byte) (int, error) {
+	n, err := sc.internalConn.Write(b)
+	sc.metrics.WrittenBytes += int64(n)
+	sc.metrics.WrittenPackets++
+	if err != nil {
+		return n, err
+	}
+	return n, err
 }
 
 // This simply wraps conn.Read and will later collect metrics
@@ -49,7 +72,7 @@ func (sc *SCIONConn) Write(b []byte) (int, error) {
 	return n, err
 }
 
-func (sc *SCIONConn) Connect(addr snet.UDPAddr, path *snet.Path) error {
+func (sc *SCIONConn) Dial(addr snet.UDPAddr, path *snet.Path) error {
 	appnet.SetPath(&addr, *path)
 	conn, err := appnet.DialAddr(&addr)
 	sc.path = path
@@ -81,4 +104,11 @@ func (sc *SCIONConn) Close() error {
 
 func (sc *SCIONConn) GetMetrics() *PacketMetrics {
 	return &sc.metrics
+}
+
+func (sc *SCIONConn) GetPath() *snet.Path {
+	return sc.path
+}
+func (sc *SCIONConn) GetRemote() *snet.UDPAddr {
+	return sc.remote
 }
