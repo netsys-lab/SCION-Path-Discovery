@@ -8,23 +8,26 @@ import (
 	"log"
 )
 
-//CurrentSelection this struct can stay in here, users could add more fields
-type CurrentSelection struct {
-	PathSet pathselection.PathSet
+//LastSelection users could add more fields
+type LastSelection struct {
+	pathSet pathselection.PathSet
 }
 
-// NewFullPathSet contain all initially available paths
-func NewFullPathSet(addr *snet.UDPAddr) (CurrentSelection, error) {
+//NewFullPathSet contains all initially available paths
+func NewFullPathSet(addr *snet.UDPAddr) (LastSelection, error) {
 	pathSet, err := pathselection.QueryPaths(addr)
-	return CurrentSelection{PathSet: pathSet}, err
+	return LastSelection{pathSet: pathSet}, err
 }
 
 //CustomPathSelectAlg this is where the user actually wants to implement its logic in
-func (currSel *CurrentSelection) CustomPathSelectAlg() {
-	currSel.PathSet.GetPathLargeMTU(3)
+func (lastSel *LastSelection) CustomPathSelectAlg(pathSet *pathselection.PathSet) (*pathselection.PathSet, error) {
+	return pathSet.GetPathHighBandwidth(3), nil
 }
 
-
+//GetPathSet must be implemented
+func (lastSel *LastSelection) GetPathSet() *pathselection.PathSet {
+	return &lastSel.pathSet
+}
 
 func main() {
 	pathselection.InitHashMap()
@@ -32,17 +35,14 @@ func main() {
 	local := "peer0"
 	for _, peer := range peers {
 		parsedAddr, _ := snet.ParseUDPAddr(peer)
-		currentSelection, err := NewFullPathSet(parsedAddr)
+		lastSelection, err := NewFullPathSet(parsedAddr)
 		if err != nil {
 			return
 		}
-
 		//example for DB Query
-		//db, _ := pathselection.GetPathSet(parsedAddr)
-
+		//pathSetOutOfDB, err := pathselection.GetPathSet(parsedAddr)
 		mpSock := smp.NewMPPeerSock(local, parsedAddr)
-		currentSelection.CustomPathSelectAlg()
-		err = mpSock.Connect(currentSelection.PathSet)
+		err = mpSock.Connect(&lastSelection)
 		if err != nil {
 			log.Fatal("Failed to connect MPPeerSock", err)
 		}

@@ -95,10 +95,11 @@ type MeasuringReaderWriter interface {
 	Measure(snet.Path) chan PathQuality
 }
 
-func NewPathSet() QualityDB {
-	//return &PathSet{}
-	return nil
-}
+//TODO: can be removed?
+//func NewPathSet() QualityDB {
+//	//return &PathSet{}
+//	return nil
+//}
 
 func SelectPaths(count int, pathSet *PathSet) (newPathSet *PathSet) {
 	lenPaths := len(pathSet.Paths)
@@ -117,7 +118,10 @@ func SelectPaths(count int, pathSet *PathSet) (newPathSet *PathSet) {
 }
 
 type CustomPathSelection interface {
-	CustomPathSelectAlg()
+	CustomPathSelectAlg(*PathSet) (*PathSet, error)
+	// GetPathSet is needed because API does not know name
+	// of field for PathSet
+	GetPathSet() *PathSet
 }
 
 func InitHashMap() {
