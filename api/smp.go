@@ -107,12 +107,13 @@ func NewMonitoredConn(snetUDPAddr snet.UDPAddr, path *snet.Path) (*packets.Monit
 	}, nil
 }
 
-func NewMPSock(peer *snet.UDPAddr) *MPPeerSock {
-	return &MPPeerSock{
-		Peer:            peer,
-		OnPathsetChange: make(chan pathselection.PathSet),
-	}
-}
+//TODO: can be removed?
+//func NewMPSock(peer *snet.UDPAddr) *MPPeerSock {
+//	return &MPPeerSock{
+//		Peer:            peer,
+//		OnPathsetChange: make(chan pathselection.PathSet),
+//	}
+//}
 
 func CloseConn(conn packets.MonitoredConn) error {
 	return conn.InternalConn.Close()
@@ -120,13 +121,13 @@ func CloseConn(conn packets.MonitoredConn) error {
 
 // Connect A first approach could be to open connections over all
 // Paths to later reduce time effort for switching paths
-func (mp *MPPeerSock) Connect(pathSet pathselection.PathSet) error {
-	err := mp.DialAll(pathSet)
+func (mp *MPPeerSock) Connect(pathSetWrapper pathselection.CustomPathSelection) error {
+	selectedPathSet, err := pathSetWrapper.CustomPathSelectAlg(pathSetWrapper.GetPathSet())
+	err = mp.DialAll(selectedPathSet)
 	if err != nil {
 		return err
 	}
-	// mp.Connections[0].Write([]byte("Hello World!\n"))
-	//mp.OnPathsetChange <- pathAlternatives
+	//mp.OnPathsetChange <- selectedPathSet
 	return nil
 }
 
@@ -154,7 +155,7 @@ func (mp *MPPeerSock) DialPath(path *snet.Path) (*packets.MonitoredConn, error) 
 
 // DialAll Could call dialPath for all paths. However, not the connections over included
 // should be idled or closed here
-func (mp *MPPeerSock) DialAll(pathAlternatives pathselection.PathSet) error {
+func (mp *MPPeerSock) DialAll(pathAlternatives *pathselection.PathSet) error {
 	for _, p := range pathAlternatives.Paths {
 		path := &p.Path
 		connection, err := mp.DialPath(path)
