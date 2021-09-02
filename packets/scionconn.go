@@ -1,8 +1,10 @@
 package packets
 
 import (
+	"fmt"
 	"net"
 
+	optimizedconn "github.com/johannwagner/scion-optimized-connection/pkg"
 	"github.com/netsec-ethz/scion-apps/pkg/appnet"
 	"github.com/scionproto/scion/go/lib/snet"
 )
@@ -20,12 +22,13 @@ func SCIONTransportConstructor() UDPConn {
 // 0.0.3: Collecting metrics for read and written bytes is better at a place
 // where both information are available, so we put it here, not obsolete
 type SCIONConn struct { // Former: MonitoredConn
-	internalConn *snet.Conn
+	internalConn *optimizedconn.OptimizedSCIONConn
 	path         *snet.Path
 	peer         string
 	state        int // See Connection States
 	metrics      PacketMetrics
 	remote       *snet.UDPAddr
+	local        *net.UDPAddr
 }
 
 // This simply wraps conn.Read and will later collect metrics
@@ -52,7 +55,9 @@ func (sc *SCIONConn) WriteStream(b []byte) (int, error) {
 
 // This simply wraps conn.Read and will later collect metrics
 func (sc *SCIONConn) Read(b []byte) (int, error) {
+	fmt.Printf("Waiting on %s\n", sc.internalConn.LocalAddr())
 	n, err := sc.internalConn.Read(b)
+	fmt.Printf("Read %d bytes\n", n)
 	if err != nil {
 		return n, err
 	}
@@ -64,6 +69,7 @@ func (sc *SCIONConn) Read(b []byte) (int, error) {
 // This simply wraps conn.Write and will later collect metrics
 func (sc *SCIONConn) Write(b []byte) (int, error) {
 	n, err := sc.internalConn.Write(b)
+	fmt.Printf("Wrote %d bytes to remote %s\n", n, sc.remote)
 	sc.metrics.WrittenBytes += int64(n)
 	sc.metrics.WrittenPackets++
 	if err != nil {
@@ -74,12 +80,12 @@ func (sc *SCIONConn) Write(b []byte) (int, error) {
 
 func (sc *SCIONConn) Dial(addr snet.UDPAddr, path *snet.Path) error {
 	appnet.SetPath(&addr, *path)
-	conn, err := appnet.DialAddr(&addr)
-	sc.path = path
+	conn, err := optimizedconn.Dial(sc.local, &addr)
 	if err != nil {
 		return err
 	}
-
+	sc.remote = &addr
+	sc.path = path
 	sc.internalConn = conn
 	return nil
 
@@ -90,12 +96,19 @@ func (sc *SCIONConn) Listen(addr snet.UDPAddr) error {
 		IP:   addr.Host.IP,
 		Port: addr.Host.Port,
 	}
-	conn, err := appnet.Listen(&udpAddr)
+	conn, err := optimizedconn.Listen(&udpAddr)
 	if err != nil {
 		return err
 	}
 	sc.internalConn = conn
+	sc.local = &udpAddr
 	return nil
+}
+
+func (sc *SCIONConn) SetLocal(addr snet.UDPAddr) {
+	sc.local = &net.UDPAddr{
+		IP: addr.Host.IP,
+	}
 }
 
 func (sc *SCIONConn) Close() error {
@@ -111,4 +124,11 @@ func (sc *SCIONConn) GetPath() *snet.Path {
 }
 func (sc *SCIONConn) GetRemote() *snet.UDPAddr {
 	return sc.remote
+}
+
+func (sc *SCIONConn) SetPath(path *snet.Path) {
+	sc.path = path
+}
+func (sc *SCIONConn) SetRemote(remote *snet.UDPAddr) {
+	sc.remote = remote
 }

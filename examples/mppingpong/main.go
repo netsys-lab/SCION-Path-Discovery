@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 
@@ -53,6 +54,7 @@ func main() {
 			log.Fatalf("Failed to parse remote addr %s, err: %v", *remoteAddr, err)
 			os.Exit(1)
 		}
+		fmt.Println(peerAddr)
 		mpSock.SetPeer(peerAddr)
 		err = mpSock.Connect(customPathSelectAlg, nil)
 		if err != nil {
@@ -65,7 +67,7 @@ func main() {
 			log.Fatalf("Failed to write bytes from peer %s, err: %v", *remoteAddr, err)
 			os.Exit(1)
 		}
-		log.Printf("Wrote %d bytes to %s", n, *remoteAddr)
+		log.Printf("Wrote cool %d bytes to %s", n, *remoteAddr)
 	}
 
 	// mpSock.

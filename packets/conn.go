@@ -18,6 +18,7 @@ type UDPConn interface {
 	GetMetrics() *PacketMetrics
 	GetPath() *snet.Path
 	GetRemote() *snet.UDPAddr
+	SetLocal(snet.UDPAddr)
 	WriteStream([]byte) (int, error)
 	ReadStream([]byte) (int, error)
 }

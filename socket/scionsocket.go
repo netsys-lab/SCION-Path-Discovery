@@ -1,11 +1,19 @@
 package socket
 
 import (
+	"bytes"
+	"encoding/gob"
+	"fmt"
+
 	"github.com/netsys-lab/scion-path-discovery/packets"
 	"github.com/scionproto/scion/go/lib/snet"
 )
 
 var _ UnderlaySocket = (*SCIONSocket)(nil)
+
+type DialPacket struct {
+	Addr snet.UDPAddr
+}
 
 // TODO: extend this further. It may be useful to use more than
 // one native UDP socket due to performance limitations
@@ -14,17 +22,19 @@ var _ UnderlaySocket = (*SCIONSocket)(nil)
 //}
 
 type SCIONSocket struct {
-	ctrlConn             packets.UDPConn
+	listenConns          []packets.UDPConn
 	local                string
 	localAddr            *snet.UDPAddr
 	transportConstructor packets.TransportConstructor
-	conns                []packets.UDPConn
+	dialConns            []packets.UDPConn
 }
 
 func NewSCIONSocket(local string, transportConstructor packets.TransportConstructor) *SCIONSocket {
 	s := SCIONSocket{
 		local:                local,
 		transportConstructor: transportConstructor,
+		listenConns:          make([]packets.UDPConn, 0),
+		dialConns:            make([]packets.UDPConn, 0),
 	}
 
 	return &s
@@ -37,53 +47,89 @@ func (s *SCIONSocket) Listen() error {
 	}
 
 	s.localAddr = lAddr
-	s.ctrlConn = s.transportConstructor()
-	return s.ctrlConn.Listen(*s.localAddr)
+	conn := s.transportConstructor()
+	s.listenConns = append(s.listenConns, conn)
+	return conn.Listen(*s.localAddr)
 }
 
-func (s *SCIONSocket) WaitForDialIn() (packets.UDPConn, *snet.UDPAddr, error) {
+func (s *SCIONSocket) WaitForDialIn() (*snet.UDPAddr, error) {
 	// TODO: Close
-	bytes := make([]byte, packets.PACKET_SIZE)
-	_, err := s.ctrlConn.Read(bytes)
+	bts := make([]byte, packets.PACKET_SIZE)
+	// We assume that the first conn here is always the one that was initialized by listen()
+	// Other cons could be added due to handshakes (QUIC specific)
+	fmt.Printf("Waiting for input on %s", s.local)
+	_, err := s.listenConns[0].Read(bts)
+	fmt.Println("Read something")
 	if err != nil {
-		return nil, nil, err
+		return nil, err
+	}
+	p := DialPacket{}
+	network := bytes.NewBuffer(bts) // Stand-in for a network connection
+	dec := gob.NewDecoder(network)
+	err = dec.Decode(&p)
+	if err != nil {
+		return nil, err
 	}
 
-	// TODO: Handle Packets appropriate
-	return nil, nil, err
+	addr := p.Addr
+
+	return &addr, nil
 }
 
-func (s *SCIONSocket) AcceptAll() (*snet.UDPAddr, []packets.UDPConn, error) {
-	// TODO: Close
-	bytes := make([]byte, packets.PACKET_SIZE)
-	_, err := s.ctrlConn.Read(bytes)
+func (s *SCIONSocket) Dial(remote snet.UDPAddr, path snet.Path, options DialOptions) (packets.UDPConn, error) {
+	// appnet.SetPath(&remote, path)
+	// fmt.Printf("Dialing to %s via %s\n", remote.String(), remote.Path)
+	conn := s.transportConstructor()
+	conn.SetLocal(*s.localAddr)
+	err := conn.Dial(remote, &path)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	// TODO: Handle Packets appropriate
-	return nil, make([]packets.UDPConn, 0), nil
+	if options.SendAddrPacket {
+		var network bytes.Buffer
+		enc := gob.NewEncoder(&network) // Will write to network.
+		p := DialPacket{
+			Addr: remote,
+		}
+
+		err := enc.Encode(p)
+		conn.Write(network.Bytes())
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	s.dialConns = append(s.dialConns, conn)
+
+	return conn, nil
 }
 
-func (s *SCIONSocket) Dial(remote snet.UDPAddr, path snet.Path) (packets.UDPConn, error) {
-	// TODO: Handle Packets appropriate
-	// TODO: Append connection to close them later
-	return nil, nil
+func (s *SCIONSocket) DialAll(remote snet.UDPAddr, path []snet.Path, options DialOptions) ([]packets.UDPConn, error) {
+	conns := make([]packets.UDPConn, 0)
+	for _, v := range path {
+		conn, err := s.Dial(remote, v, options)
+		if err != nil {
+			return nil, err
+		}
+		conns = append(conns, conn)
+	}
+	fmt.Println("Dial all#1")
+
+	return conns, nil
 }
 
-func (s *SCIONSocket) DialAll(remote snet.UDPAddr, path []snet.Path) ([]packets.UDPConn, error) {
-	// TODO: Handle Packets appropriate
-	// TODO: Append connections to close them later
-	return make([]packets.UDPConn, 0), nil
+func (s *SCIONSocket) GetListenConnections() []packets.UDPConn {
+	return s.listenConns
 }
 
-func (s *SCIONSocket) GetConnections() []packets.UDPConn {
-	return s.conns
+func (s *SCIONSocket) GetDialConnections() []packets.UDPConn {
+	return s.dialConns
 }
 
 func (s *SCIONSocket) CloseAll() []error {
 	errors := make([]error, 0)
-	for _, con := range s.conns {
+	for _, con := range s.dialConns {
 		err := con.Close()
 		if err != nil {
 			errors = append(errors, err)
