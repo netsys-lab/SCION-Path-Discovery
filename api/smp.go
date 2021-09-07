@@ -1,10 +1,8 @@
 package smp
 
 import (
-	"context"
 	"fmt"
 
-	"github.com/netsec-ethz/scion-apps/pkg/appnet"
 	"github.com/netsys-lab/scion-path-discovery/packets"
 	"github.com/netsys-lab/scion-path-discovery/pathselection"
 	"github.com/netsys-lab/scion-path-discovery/socket"
@@ -54,15 +52,9 @@ const (
 // that handles multiple MPPeerSocks
 // TODO: Make fields private that should be private...
 type MPPeerSock struct {
-	Peer                *snet.UDPAddr
-	OnPathsetChange     chan pathselection.PathSet
-	Connections         []packets.MonitoredConn
-	FullPathset         []snet.Path
-	SelectedPathset     []snet.Path
-	Connections         []packets.QUICReliableConn
-	OnConnectionsChange chan []packets.UDPConn
-	Peer                *snet.UDPAddr
-	// Connections             []packets.QUICReliableConn
+	Peer                    *snet.UDPAddr
+	OnPathsetChange         chan pathselection.PathSet
+	OnConnectionsChange     chan []packets.UDPConn
 	PathSelectionProperties []string // TODO: Design a real struct for this, string is only dummy
 	PacketScheduler         packets.PacketScheduler
 	Local                   string
@@ -96,15 +88,20 @@ func (mp *MPPeerSock) Listen() error {
 	return nil
 }
 
-func (mp *MPPeerSock) WaitForPeerConnect(customPathSelectAlg selAlg) (*snet.UDPAddr, error) {
+func (mp *MPPeerSock) WaitForPeerConnect(pathSetWrapper pathselection.CustomPathSelection) (*snet.UDPAddr, error) {
 	remote, err := mp.UnderlaySocket.WaitForDialIn()
 	if err != nil {
 		return nil, err
 	}
 	mp.Peer = remote
 
+	selectedPathSet, err := pathSetWrapper.CustomPathSelectAlg(pathSetWrapper.GetPathSet())
+	if err != nil {
+		return nil, err
+	}
+
 	// mp.StartPathSelection()
-	mp.DialAll(&ConnectOptions{
+	mp.DialAll(selectedPathSet, &ConnectOptions{
 		SendAddrPacket: false,
 	})
 
@@ -162,25 +159,13 @@ func (mp *MPPeerSock) Connect(pathSetWrapper pathselection.CustomPathSelection, 
 		opts = options
 	}
 	var err error
-	snetUDPAddr := mp.Peer
-	fmt.Println(snetUDPAddr)
-	mp.FullPathset, err = appnet.DefNetwork().PathQuerier.Query(context.Background(), snetUDPAddr.IA)
-	if err != nil {
-		return err
-	}
-	for i, path := range mp.FullPathset {
-		fmt.Printf("Path %d: %+v\n", i, path)
-
-	}
 
 	selectedPathSet, err := pathSetWrapper.CustomPathSelectAlg(pathSetWrapper.GetPathSet())
-	err = mp.DialAll(selectedPathSet)
 	if err != nil {
 		return err
 	}
 
-	mp.SelectedPathset, err = customPathSelection(mp.FullPathset)
-	err = mp.DialAll(opts)
+	err = mp.DialAll(selectedPathSet, opts)
 	if err != nil {
 		return err
 	}
@@ -192,7 +177,8 @@ func (mp *MPPeerSock) Connect(pathSetWrapper pathselection.CustomPathSelection, 
 
 func (mp *MPPeerSock) pathSetChange() {
 	select {
-	case mp.OnPathsetChange <- mp.SelectedPathset:
+	// TODO: Fixme
+	// case mp.OnPathsetChange <- mp.SelectedPathset:
 	default:
 	}
 }
@@ -222,12 +208,12 @@ func (mp *MPPeerSock) Disconnect() []error {
 */
 // Could call dialPath for all paths. However, not the connections over included
 // should be idled or closed here
-func (mp *MPPeerSock) DialAll(options *ConnectOptions) error {
+func (mp *MPPeerSock) DialAll(pathAlternatives *pathselection.PathSet, options *ConnectOptions) error {
 	opts := socket.DialOptions{}
 	if options != nil {
 		opts.SendAddrPacket = options.SendAddrPacket
 	}
-	conns, err := mp.UnderlaySocket.DialAll(*mp.Peer, mp.SelectedPathset, opts)
+	conns, err := mp.UnderlaySocket.DialAll(*mp.Peer, pathselection.UnwrapPathset(*pathAlternatives), opts)
 	if err != nil {
 		return err
 	}

@@ -16,26 +16,47 @@ var localAddr *string = flag.String("l", "localhost:9999", "Set the local addres
 var remoteAddr *string = flag.String("r", "localhost:80", "Set the remote address")
 var isServer *bool = flag.Bool("s", false, "Run as Server (otherwise, client)")
 
-func customPathSelectAlg(paths []snet.Path) ([]snet.Path, error) {
-	paths1 := pathselection.SelectShortestPaths(5, paths)
-	pathsToReturn := pathselection.SelectLowestLatencies(3, paths1)
-	// pathsToReturn := []snet.Path{smp.SelectLowestLatency(paths)}
-	return pathsToReturn, nil
+//LastSelection users could add more fields
+type LastSelection struct {
+	pathSet pathselection.PathSet
+}
+
+//NewFullPathSet contains all initially available paths
+func NewFullPathSet(addr *snet.UDPAddr) (LastSelection, error) {
+	pathSet, err := pathselection.QueryPaths(addr)
+	return LastSelection{pathSet: pathSet}, err
+}
+
+//CustomPathSelectAlg this is where the user actually wants to implement its logic in
+func (lastSel *LastSelection) CustomPathSelectAlg(pathSet *pathselection.PathSet) (*pathselection.PathSet, error) {
+	return pathSet.GetPathHighBandwidth(3), nil
+}
+
+//GetPathSet must be implemented
+func (lastSel *LastSelection) GetPathSet() *pathselection.PathSet {
+	return &lastSel.pathSet
 }
 
 func main() {
 	// peers := []string{"peer1", "peer2", "peer3"} // Later real addresses
 	flag.Parse()
 
+	parsedAddr, _ := snet.ParseUDPAddr(*remoteAddr)
+	lastSelection, err := NewFullPathSet(parsedAddr)
+	if err != nil {
+		return
+	}
+
+	pathselection.InitHashMap()
 	mpSock := smp.NewMPPeerSock(*localAddr, nil)
-	err := mpSock.Listen()
+	err = mpSock.Listen()
 	if err != nil {
 		log.Fatal("Failed to listen MPPeerSock", err)
 		os.Exit(1)
 	}
 
 	if *isServer {
-		remote, err := mpSock.WaitForPeerConnect(customPathSelectAlg)
+		remote, err := mpSock.WaitForPeerConnect(&lastSelection)
 		if err != nil {
 			log.Fatal("Failed to connect in-dialing peer", err)
 			os.Exit(1)
@@ -56,7 +77,7 @@ func main() {
 		}
 		fmt.Println(peerAddr)
 		mpSock.SetPeer(peerAddr)
-		err = mpSock.Connect(customPathSelectAlg, nil)
+		err = mpSock.Connect(&lastSelection, nil)
 		if err != nil {
 			log.Fatal("Failed to connect MPPeerSock", err)
 			os.Exit(1)

@@ -3,8 +3,6 @@ package packets
 import (
 	"errors"
 
-	"github.com/netsys-lab/scion-path-discovery/peers"
-
 	"github.com/scionproto/scion/go/lib/snet"
 )
 
@@ -15,8 +13,6 @@ import (
 // The scheduler decides for each packet over which of the optimal
 // paths it will be sent
 type PacketScheduler interface {
-	SetPathlevelPeers(peers []peers.PathlevelPeer)
-	SetPathQualities([]snet.Path) error
 	Write([]byte) (int, error)
 	Read([]byte) (int, error)
 	WriteStream([]byte) (int, error)
