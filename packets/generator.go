@@ -19,6 +19,7 @@ type PacketGenMeta struct {
 type PacketGen interface {
 	SetMeta(metrics PacketGenMeta)
 	GetMetrics() PacketMetrics
+	// GetMetrics() PacketMetrics
 	// Creating a SCION packet out of the provided payload
 	// returns the full SCION packet in a new byte slice
 	// Metrics are collected here, because all SCION header information

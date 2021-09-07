@@ -1,9 +1,11 @@
 package smp
 
 import (
-	"github.com/netsec-ethz/scion-apps/pkg/appnet"
+	"fmt"
+
 	"github.com/netsys-lab/scion-path-discovery/packets"
 	"github.com/netsys-lab/scion-path-discovery/pathselection"
+	"github.com/netsys-lab/scion-path-discovery/socket"
 	"github.com/scionproto/scion/go/lib/snet"
 	// "github.com/netsys-lab/scion-multipath-lib/peers"
 )
@@ -48,28 +50,75 @@ const (
 // Each socket is bound to a specific peer
 // TODO: One socket that handles multiple peers? This could be done by a wrapper
 // that handles multiple MPPeerSocks
+// TODO: Make fields private that should be private...
 type MPPeerSock struct {
 	Peer                    *snet.UDPAddr
 	OnPathsetChange         chan pathselection.PathSet
-	Connections             []packets.MonitoredConn
+	OnConnectionsChange     chan []packets.UDPConn
 	PathSelectionProperties []string // TODO: Design a real struct for this, string is only dummy
 	PacketScheduler         packets.PacketScheduler
 	Local                   string
+	UnderlaySocket          socket.UnderlaySocket
+	TransportConstructor    packets.TransportConstructor
 }
 
 func NewMPPeerSock(local string, peer *snet.UDPAddr) *MPPeerSock {
 	return &MPPeerSock{
-		Peer:            peer,
-		Local:           local,
-		OnPathsetChange: make(chan pathselection.PathSet),
+		Peer:                 peer,
+		Local:                local,
+		OnPathsetChange:      make(chan pathselection.PathSet),
+		TransportConstructor: packets.SCIONTransportConstructor,
+		UnderlaySocket:       socket.NewSCIONSocket(local, packets.SCIONTransportConstructor),
+		PacketScheduler:      &packets.SampleFirstPathScheduler{},
 	}
 }
 
-func (mp MPPeerSock) StartPathSelection() {
+func (mp *MPPeerSock) SetPeer(peer *snet.UDPAddr) {
+	mp.Peer = peer
+}
+
+func (mp *MPPeerSock) Listen() error {
+	err := mp.UnderlaySocket.Listen()
+	if err != nil {
+		return err
+	}
+
+	listenCons := mp.UnderlaySocket.GetListenConnections()
+	mp.PacketScheduler.SetListenConnections(listenCons)
+	return nil
+}
+
+func (mp *MPPeerSock) WaitForPeerConnect(pathSetWrapper pathselection.CustomPathSelection) (*snet.UDPAddr, error) {
+	remote, err := mp.UnderlaySocket.WaitForDialIn()
+	if err != nil {
+		return nil, err
+	}
+	mp.Peer = remote
+
+	selectedPathSet, err := pathSetWrapper.CustomPathSelectAlg(pathSetWrapper.GetPathSet())
+	if err != nil {
+		return nil, err
+	}
+
+	// mp.StartPathSelection()
+	mp.DialAll(selectedPathSet, &ConnectOptions{
+		SendAddrPacket: false,
+	})
+
+	return remote, nil
+}
+
+func (mp *MPPeerSock) StartPathSelection() {
+	// TODO: Nico/Karola: Implement metrics collection and path alg invocation
 	// We could put a timer here.
-	// Every X seconds we collect metrics from the packetScheduler
+	// Every X seconds we collect metrics from the underlaySocket and its connections
 	// and provide them for path selection
-	// Furthermore, a first pathset should be defined
+	// So in a timer call underlaysocket.GetConnections
+	// And write the measured metrics in the QualityDB
+	// Then you could invoke this the path selection algorithm
+	// And if this returns another pathset then currently active,
+	// one could invoke this event here...
+	// To connect over the new pathset, call mpSock.DialAll(pathset)
 	go func() {
 		mp.OnPathsetChange <- pathselection.PathSet{}
 	}()
@@ -84,67 +133,71 @@ func (mp MPPeerSock) StartPathSelection() {
 
 // Read from the peer over a specific path
 // Here the socket could decide from which path to read or we have to read from all
-func (mp MPPeerSock) Read(b []byte) (int, error) {
-	return 0, nil
+func (mp *MPPeerSock) Read(b []byte) (int, error) {
+	return mp.PacketScheduler.Read(b)
 }
 
 // Write to the peer over a specific path
 // Here the socket could decide over which path to write
-func (mp MPPeerSock) Write(b []byte) (int, error) {
-	return 0, nil
+func (mp *MPPeerSock) Write(b []byte) (int, error) {
+	return mp.PacketScheduler.Write(b)
 }
 
-func NewMonitoredConn(snetUDPAddr snet.UDPAddr, path *snet.Path) (*packets.MonitoredConn, error) {
-	appnet.SetPath(&snetUDPAddr, *path)
-	conn, err := appnet.DialAddr(&snetUDPAddr)
-	if err != nil {
-		return nil, err
-	}
-	return &packets.MonitoredConn{
-		Path:         path,
-		InternalConn: conn,
-		State:        CONN_HANDSHAKING,
-	}, nil
+type ConnectOptions struct {
+	SendAddrPacket bool
 }
 
-//TODO: can be removed?
-//func NewMPSock(peer *snet.UDPAddr) *MPPeerSock {
-//	return &MPPeerSock{
-//		Peer:            peer,
-//		OnPathsetChange: make(chan pathselection.PathSet),
-//	}
-//}
-
-func CloseConn(conn packets.MonitoredConn) error {
-	return conn.InternalConn.Close()
-}
-
-// Connect A first approach could be to open connections over all
+// A first approach could be to open connections over all
 // Paths to later reduce time effort for switching paths
-func (mp *MPPeerSock) Connect(pathSetWrapper pathselection.CustomPathSelection) error {
+func (mp *MPPeerSock) Connect(pathSetWrapper pathselection.CustomPathSelection, options *ConnectOptions) error {
+	// mp.StartPathSelection()
+	// TODO: Rethink default values here...
+	opts := &ConnectOptions{}
+	if options == nil {
+		opts.SendAddrPacket = true
+	} else {
+		opts = options
+	}
+	var err error
+
 	selectedPathSet, err := pathSetWrapper.CustomPathSelectAlg(pathSetWrapper.GetPathSet())
-	err = mp.DialAll(selectedPathSet)
 	if err != nil {
 		return err
 	}
-	//mp.OnPathsetChange <- selectedPathSet
+
+	err = mp.DialAll(selectedPathSet, opts)
+	if err != nil {
+		return err
+	}
+	// mp.Connections[0].Write([]byte("Hello World!\n"))
+	// mp.OnPathsetChange <- mp.SelectedPathset
+	fmt.Println("DIaled all")
 	return nil
 }
 
-func (mp *MPPeerSock) Disconnect() []error {
-	var errs []error
-	for _, conn := range mp.Connections {
-		err := CloseConn(conn)
-		if err != nil {
-			errs = append(errs, err)
-		}
+func (mp *MPPeerSock) pathSetChange() {
+	select {
+	// TODO: Fixme
+	// case mp.OnPathsetChange <- mp.SelectedPathset:
+	default:
 	}
-	return errs
+}
+
+func (mp *MPPeerSock) connectionSetChange(conns []packets.UDPConn) {
+	select {
+	case mp.OnConnectionsChange <- conns:
+	default:
+	}
+}
+
+func (mp *MPPeerSock) Disconnect() []error {
+	mp.PacketScheduler.SetDialConnections(make([]packets.UDPConn, 0))
+	return mp.UnderlaySocket.CloseAll()
 }
 
 // DialPath This one should "activate" the connection over the respective path
 // or create one if its not there yet
-func (mp *MPPeerSock) DialPath(path *snet.Path) (*packets.MonitoredConn, error) {
+/*func (mp *MPPeerSock) DialPath(path *snet.Path) (*packets.QUICReliableConn, error) {
 	// copy mp.Peer to not interfere with other connections
 	connection, err := NewMonitoredConn(*mp.Peer, path)
 	if err != nil {
@@ -152,17 +205,37 @@ func (mp *MPPeerSock) DialPath(path *snet.Path) (*packets.MonitoredConn, error) 
 	}
 	return connection, nil
 }
-
-// DialAll Could call dialPath for all paths. However, not the connections over included
+*/
+// Could call dialPath for all paths. However, not the connections over included
 // should be idled or closed here
-func (mp *MPPeerSock) DialAll(pathAlternatives *pathselection.PathSet) error {
-	for _, p := range pathAlternatives.Paths {
-		path := &p.Path
-		connection, err := mp.DialPath(path)
-		if err != nil {
-			return err
-		}
-		mp.Connections = append(mp.Connections, *connection)
+func (mp *MPPeerSock) DialAll(pathAlternatives *pathselection.PathSet, options *ConnectOptions) error {
+	opts := socket.DialOptions{}
+	if options != nil {
+		opts.SendAddrPacket = options.SendAddrPacket
 	}
+	conns, err := mp.UnderlaySocket.DialAll(*mp.Peer, pathselection.UnwrapPathset(*pathAlternatives), opts)
+	if err != nil {
+		return err
+	}
+
+	mp.PacketScheduler.SetDialConnections(conns)
+	// mp.OnConnectionsChange <- conns
+	mp.connectionSetChange(conns)
 	return nil
+}
+
+//
+// Added in 0.0.3 - WIP, not ready yet
+//
+
+// Read from the peer over a specific path
+// Here the socket could decide from which path to read or we have to read from all
+func (mp *MPPeerSock) ReadStream(b []byte) (int, error) {
+	return mp.PacketScheduler.ReadStream(b)
+}
+
+// Write to the peer over a specific path
+// Here the socket could decide over which path to write
+func (mp *MPPeerSock) WriteStream(b []byte) (int, error) {
+	return mp.PacketScheduler.WriteStream(b)
 }

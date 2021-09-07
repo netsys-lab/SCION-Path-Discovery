@@ -5,17 +5,18 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	"github.com/netsec-ethz/scion-apps/pkg/appnet"
 	"io"
 	"strings"
 	"time"
+
+	"github.com/netsec-ethz/scion-apps/pkg/appnet"
 
 	"github.com/scionproto/scion/go/lib/addr"
 	"github.com/scionproto/scion/go/lib/snet"
 )
 
 var PathSetDB []PathSet
-var hashMap map[string] int
+var hashMap map[string]int
 
 type PathSet struct {
 	Address snet.UDPAddr
@@ -149,4 +150,13 @@ func QueryPaths(addr *snet.UDPAddr) (PathSet, error) {
 		hashMap[hash] = len(PathSetDB) - 1
 	}
 	return tmpPathSet, nil
+}
+
+func UnwrapPathset(pathset PathSet) []snet.Path {
+	paths := make([]snet.Path, 0)
+	for _, p := range pathset.Paths {
+		paths = append(paths, p.Path)
+	}
+
+	return paths
 }
