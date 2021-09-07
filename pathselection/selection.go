@@ -120,9 +120,6 @@ func SelectPaths(count int, pathSet *PathSet) (newPathSet *PathSet) {
 
 type CustomPathSelection interface {
 	CustomPathSelectAlg(*PathSet) (*PathSet, error)
-	// GetPathSet is needed because API does not know name
-	// of field for PathSet
-	GetPathSet() *PathSet
 }
 
 func InitHashMap() {
