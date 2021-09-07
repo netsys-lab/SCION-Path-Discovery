@@ -1,8 +1,6 @@
 package smp
 
 import (
-	"fmt"
-
 	"github.com/netsys-lab/scion-path-discovery/packets"
 	"github.com/netsys-lab/scion-path-discovery/pathselection"
 	"github.com/netsys-lab/scion-path-discovery/socket"
@@ -95,10 +93,13 @@ func (mp *MPPeerSock) WaitForPeerConnect(pathSetWrapper pathselection.CustomPath
 	}
 	mp.Peer = remote
 
+	// TODO: This does not work as expected
 	selectedPathSet, err := pathSetWrapper.CustomPathSelectAlg(pathSetWrapper.GetPathSet())
 	if err != nil {
 		return nil, err
 	}
+
+	mp.pathSetChange(*selectedPathSet)
 
 	// mp.StartPathSelection()
 	mp.DialAll(selectedPathSet, &ConnectOptions{
@@ -165,20 +166,21 @@ func (mp *MPPeerSock) Connect(pathSetWrapper pathselection.CustomPathSelection, 
 		return err
 	}
 
+	mp.pathSetChange(*selectedPathSet)
+
 	err = mp.DialAll(selectedPathSet, opts)
 	if err != nil {
 		return err
 	}
 	// mp.Connections[0].Write([]byte("Hello World!\n"))
 	// mp.OnPathsetChange <- mp.SelectedPathset
-	fmt.Println("DIaled all")
 	return nil
 }
 
-func (mp *MPPeerSock) pathSetChange() {
+func (mp *MPPeerSock) pathSetChange(pathset pathselection.PathSet) {
 	select {
 	// TODO: Fixme
-	// case mp.OnPathsetChange <- mp.SelectedPathset:
+	case mp.OnPathsetChange <- pathset:
 	default:
 	}
 }

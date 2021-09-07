@@ -44,7 +44,7 @@ func main() {
 	parsedAddr, _ := snet.ParseUDPAddr(*remoteAddr)
 	lastSelection, err := NewFullPathSet(parsedAddr)
 	if err != nil {
-		return
+		log.Fatal("Failed to initialise Pathselection", err)
 	}
 
 	pathselection.InitHashMap()
@@ -52,7 +52,6 @@ func main() {
 	err = mpSock.Listen()
 	if err != nil {
 		log.Fatal("Failed to listen MPPeerSock", err)
-		os.Exit(1)
 	}
 
 	if *isServer {
@@ -66,29 +65,25 @@ func main() {
 		n, err := mpSock.Read(bts)
 		if err != nil {
 			log.Fatalf("Failed to read bytes from peer %s, err: %v", remote.String(), err)
-			os.Exit(1)
 		}
 		log.Printf("Read %d bytes from %s", n, remote.String())
 	} else {
 		peerAddr, err := snet.ParseUDPAddr(*remoteAddr)
 		if err != nil {
 			log.Fatalf("Failed to parse remote addr %s, err: %v", *remoteAddr, err)
-			os.Exit(1)
 		}
 		fmt.Println(peerAddr)
 		mpSock.SetPeer(peerAddr)
 		err = mpSock.Connect(&lastSelection, nil)
 		if err != nil {
 			log.Fatal("Failed to connect MPPeerSock", err)
-			os.Exit(1)
 		}
 		bts := make([]byte, packets.PACKET_SIZE)
 		n, err := mpSock.Write(bts)
 		if err != nil {
 			log.Fatalf("Failed to write bytes from peer %s, err: %v", *remoteAddr, err)
-			os.Exit(1)
 		}
-		log.Printf("Wrote cool %d bytes to %s", n, *remoteAddr)
+		log.Printf("Wrote %d bytes to %s", n, *remoteAddr)
 	}
 
 	// mpSock.
