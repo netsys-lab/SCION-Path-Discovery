@@ -1,3 +1,4 @@
 bin/
 smp/bandwidth.go
 .vscode/
+.idea/
