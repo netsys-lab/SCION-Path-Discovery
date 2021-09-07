@@ -2,6 +2,7 @@ package smp
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/netsys-lab/scion-path-discovery/packets"
 	"github.com/netsys-lab/scion-path-discovery/pathselection"
@@ -95,20 +96,20 @@ func (mp *MPPeerSock) WaitForPeerConnect(pathSetWrapper pathselection.CustomPath
 	}
 	mp.Peer = remote
 
-	selectedPathSet, err := pathSetWrapper.CustomPathSelectAlg(pathSetWrapper.GetPathSet())
-	if err != nil {
-		return nil, err
-	}
-
-	// mp.StartPathSelection()
-	mp.DialAll(selectedPathSet, &ConnectOptions{
+	// Start selection process -> will update DB
+	mp.StartPathSelection(pathSetWrapper)
+	// wait until first signal on channel
+	selectedPathSet := <- mp.OnPathsetChange
+	// dial all paths selected by user algorithm
+	err = mp.DialAll(&selectedPathSet, &ConnectOptions{
 		SendAddrPacket: false,
 	})
 
-	return remote, nil
+	return remote, err
 }
 
-func (mp *MPPeerSock) StartPathSelection() {
+func (mp *MPPeerSock) StartPathSelection(pathSetWrapper pathselection.CustomPathSelection) {
+	// DONE!
 	// TODO: Nico/Karola: Implement metrics collection and path alg invocation
 	// We could put a timer here.
 	// Every X seconds we collect metrics from the underlaySocket and its connections
@@ -119,9 +120,17 @@ func (mp *MPPeerSock) StartPathSelection() {
 	// And if this returns another pathset then currently active,
 	// one could invoke this event here...
 	// To connect over the new pathset, call mpSock.DialAll(pathset)
-	go func() {
-		mp.OnPathsetChange <- pathselection.PathSet{}
-	}()
+
+	ticker := time.NewTicker(10 * time.Second)
+	for range ticker.C {
+		// update DB / collect metrics
+		pathSet, err := pathselection.QueryPaths(mp.Peer)
+		if err != nil {
+			return
+		}
+		selectedPathSet, err := pathSetWrapper.CustomPathSelectAlg(&pathSet)
+		mp.OnPathsetChange <- *selectedPathSet
+	}
 
 	// Determine Pathlevelpeers
 	// mp.PacketScheduler.SetPathlevelPeers()
@@ -150,7 +159,7 @@ type ConnectOptions struct {
 // A first approach could be to open connections over all
 // Paths to later reduce time effort for switching paths
 func (mp *MPPeerSock) Connect(pathSetWrapper pathselection.CustomPathSelection, options *ConnectOptions) error {
-	// mp.StartPathSelection()
+	mp.StartPathSelection(pathSetWrapper)
 	// TODO: Rethink default values here...
 	opts := &ConnectOptions{}
 	if options == nil {
@@ -160,18 +169,12 @@ func (mp *MPPeerSock) Connect(pathSetWrapper pathselection.CustomPathSelection, 
 	}
 	var err error
 
-	selectedPathSet, err := pathSetWrapper.CustomPathSelectAlg(pathSetWrapper.GetPathSet())
+	selectedPathSet := <- mp.OnPathsetChange
+	err = mp.DialAll(&selectedPathSet, opts)
 	if err != nil {
 		return err
 	}
-
-	err = mp.DialAll(selectedPathSet, opts)
-	if err != nil {
-		return err
-	}
-	// mp.Connections[0].Write([]byte("Hello World!\n"))
-	// mp.OnPathsetChange <- mp.SelectedPathset
-	fmt.Println("DIaled all")
+	fmt.Println("Dialed all")
 	return nil
 }
 
