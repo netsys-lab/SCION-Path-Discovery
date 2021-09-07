@@ -21,8 +21,6 @@ func (lastSel *LastSelection) CustomPathSelectAlg(pathSet *pathselection.PathSet
 	return pathSet.GetPathHighBandwidth(3), nil
 }
 
-
-
 var localAddr *string = flag.String("l", "localhost:9999", "Set the local address")
 var remoteAddr *string = flag.String("r", "18-ffaa:1:ef8,[127.0.0.1]:12345", "Set the remote address")
 var isServer *bool = flag.Bool("s", false, "Run as Server (otherwise, client)")
@@ -33,7 +31,6 @@ func main() {
 
 	lastSelection := LastSelection{}
 	mpSock := smp.NewMPPeerSock(*localAddr, nil)
-	pathselection.InitHashMap()
 	err := mpSock.Listen()
 	if err != nil {
 		log.Fatal("Failed to listen MPPeerSock", err)

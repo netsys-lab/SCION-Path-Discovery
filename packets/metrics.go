@@ -3,7 +3,7 @@ package packets
 // Some Metrics to start with
 // Will be extended later
 // NOTE: Add per path metrics here?
-type PacketMetrics struct {
+type PathMetrics struct {
 	ReadBytes      int64
 	ReadPackets    int64
 	WrittenBytes   int64

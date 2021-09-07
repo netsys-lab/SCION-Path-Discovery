@@ -61,6 +61,7 @@ type MPPeerSock struct {
 	Local                   string
 	UnderlaySocket          socket.UnderlaySocket
 	TransportConstructor    packets.TransportConstructor
+	PathQualityDB           pathselection.PathQualityDatabase
 }
 
 func NewMPPeerSock(local string, peer *snet.UDPAddr) *MPPeerSock {
@@ -71,6 +72,7 @@ func NewMPPeerSock(local string, peer *snet.UDPAddr) *MPPeerSock {
 		TransportConstructor: packets.SCIONTransportConstructor,
 		UnderlaySocket:       socket.NewSCIONSocket(local, packets.SCIONTransportConstructor),
 		PacketScheduler:      &packets.SampleFirstPathScheduler{},
+		PathQualityDB:        pathselection.NewInMemoryPathQualityDatabase(),
 	}
 }
 
@@ -86,6 +88,7 @@ func (mp *MPPeerSock) Listen() error {
 
 	listenCons := mp.UnderlaySocket.GetListenConnections()
 	mp.PacketScheduler.SetListenConnections(listenCons)
+	mp.PathQualityDB.SetListenConnections(listenCons)
 	return nil
 }
 
@@ -99,7 +102,7 @@ func (mp *MPPeerSock) WaitForPeerConnect(pathSetWrapper pathselection.CustomPath
 	// Start selection process -> will update DB
 	mp.StartPathSelection(pathSetWrapper)
 	// wait until first signal on channel
-	selectedPathSet := <- mp.OnPathsetChange
+	selectedPathSet := <-mp.OnPathsetChange
 	// dial all paths selected by user algorithm
 	err = mp.DialAll(&selectedPathSet, &ConnectOptions{
 		SendAddrPacket: false,
@@ -122,18 +125,27 @@ func (mp *MPPeerSock) StartPathSelection(pathSetWrapper pathselection.CustomPath
 	// To connect over the new pathset, call mpSock.DialAll(pathset)
 
 	ticker := time.NewTicker(10 * time.Second)
+
 	for range ticker.C {
-		// update DB / collect metrics
-		pathSet, err := pathselection.QueryPaths(mp.Peer)
-		if err != nil {
-			return
-		}
-		selectedPathSet, err := pathSetWrapper.CustomPathSelectAlg(&pathSet)
-		mp.OnPathsetChange <- *selectedPathSet
+		mp.pathSelection(pathSetWrapper)
 	}
+
+	mp.pathSelection(pathSetWrapper)
 
 	// Determine Pathlevelpeers
 	// mp.PacketScheduler.SetPathlevelPeers()
+}
+
+func (mp *MPPeerSock) pathSelection(pathSetWrapper pathselection.CustomPathSelection) {
+	mp.PathQualityDB.UpdatePathQualities(mp.Peer)
+	mp.PathQualityDB.UpdateMetrics()
+	// update DB / collect metrics
+	pathSet, err := mp.PathQualityDB.GetPathSet(mp.Peer)
+	if err != nil {
+		return
+	}
+	selectedPathSet, err := pathSetWrapper.CustomPathSelectAlg(&pathSet)
+	mp.OnPathsetChange <- *selectedPathSet
 }
 
 //
@@ -169,7 +181,7 @@ func (mp *MPPeerSock) Connect(pathSetWrapper pathselection.CustomPathSelection, 
 	}
 	var err error
 
-	selectedPathSet := <- mp.OnPathsetChange
+	selectedPathSet := <-mp.OnPathsetChange
 	err = mp.DialAll(&selectedPathSet, opts)
 	if err != nil {
 		return err
@@ -222,6 +234,7 @@ func (mp *MPPeerSock) DialAll(pathAlternatives *pathselection.PathSet, options *
 	}
 
 	mp.PacketScheduler.SetDialConnections(conns)
+	mp.PathQualityDB.SetDialConnections(conns)
 	// mp.OnConnectionsChange <- conns
 	mp.connectionSetChange(conns)
 	return nil

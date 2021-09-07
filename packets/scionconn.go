@@ -26,7 +26,7 @@ type SCIONConn struct { // Former: MonitoredConn
 	path         *snet.Path
 	peer         string
 	state        int // See Connection States
-	metrics      PacketMetrics
+	metrics      PathMetrics
 	remote       *snet.UDPAddr
 	local        *net.UDPAddr
 }
@@ -115,7 +115,7 @@ func (sc *SCIONConn) Close() error {
 	return sc.internalConn.Close()
 }
 
-func (sc *SCIONConn) GetMetrics() *PacketMetrics {
+func (sc *SCIONConn) GetMetrics() *PathMetrics {
 	return &sc.metrics
 }
 
