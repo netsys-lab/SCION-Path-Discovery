@@ -15,7 +15,7 @@ type UDPConn interface {
 	Listen(snet.UDPAddr) error
 	Dial(snet.UDPAddr, *snet.Path) error
 	Close() error
-	GetMetrics() *PacketMetrics
+	GetMetrics() *PathMetrics
 	GetPath() *snet.Path
 	GetRemote() *snet.UDPAddr
 	SetLocal(snet.UDPAddr)

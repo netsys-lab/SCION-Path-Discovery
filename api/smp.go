@@ -61,6 +61,7 @@ type MPPeerSock struct {
 	Local                   string
 	UnderlaySocket          socket.UnderlaySocket
 	TransportConstructor    packets.TransportConstructor
+	PathQualityDB           pathselection.PathQualityDatabase
 }
 
 func NewMPPeerSock(local string, peer *snet.UDPAddr) *MPPeerSock {
@@ -71,6 +72,7 @@ func NewMPPeerSock(local string, peer *snet.UDPAddr) *MPPeerSock {
 		TransportConstructor: packets.SCIONTransportConstructor,
 		UnderlaySocket:       socket.NewSCIONSocket(local, packets.SCIONTransportConstructor),
 		PacketScheduler:      &packets.SampleFirstPathScheduler{},
+		PathQualityDB:        pathselection.NewInMemoryPathQualityDatabase(),
 	}
 }
 
@@ -86,6 +88,7 @@ func (mp *MPPeerSock) Listen() error {
 
 	listenCons := mp.UnderlaySocket.GetListenConnections()
 	mp.PacketScheduler.SetListenConnections(listenCons)
+	mp.PathQualityDB.SetListenConnections(listenCons)
 	return nil
 }
 
@@ -222,6 +225,7 @@ func (mp *MPPeerSock) DialAll(pathAlternatives *pathselection.PathSet, options *
 	}
 
 	mp.PacketScheduler.SetDialConnections(conns)
+	mp.PathQualityDB.SetDialConnections(conns)
 	// mp.OnConnectionsChange <- conns
 	mp.connectionSetChange(conns)
 	return nil

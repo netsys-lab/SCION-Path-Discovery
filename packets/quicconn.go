@@ -27,7 +27,7 @@ type QUICReliableConn struct { // Former: MonitoredConn
 	peer         string
 	remote       *snet.UDPAddr
 	state        int // See Connection States
-	metrics      PacketMetrics
+	metrics      PathMetrics
 	local        *snet.UDPAddr
 }
 
@@ -162,7 +162,7 @@ func (qc *QUICReliableConn) Listen(addr snet.UDPAddr) error {
 	return nil
 }
 
-func (qc *QUICReliableConn) GetMetrics() *PacketMetrics {
+func (qc *QUICReliableConn) GetMetrics() *PathMetrics {
 	return &qc.metrics
 }
 

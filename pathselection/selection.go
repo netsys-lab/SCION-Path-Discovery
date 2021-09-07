@@ -1,26 +1,134 @@
 package pathselection
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	"io"
+	"log"
 	"strings"
 	"time"
 
 	"github.com/netsec-ethz/scion-apps/pkg/appnet"
+	"github.com/netsys-lab/scion-path-discovery/packets"
 
 	"github.com/scionproto/scion/go/lib/addr"
 	"github.com/scionproto/scion/go/lib/snet"
 )
 
-var PathSetDB []PathSet
-var hashMap map[string]int
-
 type PathSet struct {
 	Address snet.UDPAddr
 	Paths   []PathQuality
+}
+
+type PathEnumerator interface {
+	Enumerate(addr.HostAddr) PathSet
+}
+
+type PathQuality struct {
+	packets.PathMetrics
+	Timestamp time.Time
+	HopCount  int
+	MTU       uint16
+	Latency   time.Duration
+	RTT       time.Duration
+	Bytes     int
+	Duration  time.Duration
+	Path      snet.Path
+}
+
+type SelecteablePathSet interface {
+	GetPathHighBandwidth(number int) PathSet
+	GetPathLowLatency(number int) PathSet
+	GetPathLargeMTU(number int) PathSet
+	GetPathSmallHopCount(number int) PathSet
+}
+
+type PathQualityDatabase interface {
+	GetPathSet(addr *snet.UDPAddr) (PathSet, error)
+	SetListenConnections([]packets.UDPConn)
+	SetDialConnections([]packets.UDPConn)
+	UpdatePathQualities(addr *snet.UDPAddr) error
+	UpdateMetrics()
+
+	// TODO: Rethink those...
+	//GetPathFunc takes as second argument a function that is
+	//then called recursively over all PathQuality pairs, always
+	//retaining the returned result as the first input for the
+	//next call. The path associated with the last returned
+	//PathQuality struct is then picked.
+	// GetPathFunc(addr.HostAddr, func(PathQuality, PathQuality) PathQuality) snet.Path
+	//GetPathCustom takes as second argument a function that is
+	//called with the PathQuality array of all the alternative
+	//paths for the host address. The path associated with the
+	//returned PathQuality is then returned
+	// GetPathCustom(addr.HostAddr, func([]PathQuality) PathQuality) snet.Path
+}
+
+type InMemoryPathQualityDatabase struct {
+	pathSetDB   []PathSet
+	hashMap     map[string]int
+	listenConns []packets.UDPConn
+	dialConns   []packets.UDPConn
+}
+
+func (db *InMemoryPathQualityDatabase) SetListenConnections(conns []packets.UDPConn) {
+	db.listenConns = conns
+}
+
+func (db *InMemoryPathQualityDatabase) SetDialConnections(conns []packets.UDPConn) {
+	db.dialConns = conns
+}
+
+func (db *InMemoryPathQualityDatabase) UpdateMetrics() {
+	// TODO: Do listen Cons have paths?
+	for _, v := range db.listenConns {
+		pathQuality, err := db.getPathQuality(v.GetRemote(), v.GetPath())
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		connMetrics := v.GetMetrics()
+		pathQuality.ReadBytes += connMetrics.ReadBytes
+		pathQuality.WrittenBytes += connMetrics.WrittenBytes
+		pathQuality.ReadPackets += connMetrics.ReadPackets
+		pathQuality.WrittenPackets += connMetrics.WrittenPackets
+	}
+
+	for _, v := range db.dialConns {
+		pathQuality, err := db.getPathQuality(v.GetRemote(), v.GetPath())
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		connMetrics := v.GetMetrics()
+		pathQuality.ReadBytes += connMetrics.ReadBytes
+		pathQuality.WrittenBytes += connMetrics.WrittenBytes
+		pathQuality.ReadPackets += connMetrics.ReadPackets
+		pathQuality.WrittenPackets += connMetrics.WrittenPackets
+	}
+}
+
+func (db *InMemoryPathQualityDatabase) getPathQuality(addr *snet.UDPAddr, path *snet.Path) (*PathQuality, error) {
+	var pathQuality *PathQuality
+	pathSet, err := db.GetPathSet(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, v := range pathSet.Paths {
+		if bytes.Compare(v.Path.Path().Raw, (*path).Path().Raw) == 0 {
+			pathQuality = &v
+		}
+	}
+
+	if pathQuality == nil {
+		return nil, errors.New(fmt.Sprintf("No PathQuality found for path"))
+	}
+
+	return pathQuality, nil
+
 }
 
 func asSha256(o interface{}) string {
@@ -38,64 +146,23 @@ func calcAddrHash(addr *snet.UDPAddr) string {
 	return asSha256(partHash.String())
 }
 
-func GetPathSet(addr *snet.UDPAddr) (PathSet, error) {
+func (db *InMemoryPathQualityDatabase) GetPathSet(addr *snet.UDPAddr) (PathSet, error) {
 	hash := calcAddrHash(addr)
-	index, contained := hashMap[hash]
+	index, contained := db.hashMap[hash]
 	if contained {
-		return PathSetDB[index], nil
+		return db.pathSetDB[index], nil
 	} else {
 		return PathSet{}, errors.New("404")
 	}
 }
 
-func (pathSet *PathSet) GetPathFunc(hostAddr addr.HostAddr, f func(PathQuality, PathQuality) PathQuality) snet.Path {
-	panic("implement me")
-}
-
-func (pathSet *PathSet) GetPathCustom(hostAddr addr.HostAddr, f func([]PathQuality) PathQuality) snet.Path {
-	panic("implement me")
-}
-
-type PathEnumerator interface {
-	Enumerate(addr.HostAddr) PathSet
-}
-
-type PathQuality struct {
-	Timestamp time.Time
-	HopCount  int
-	MTU       uint16
-	Latency   time.Duration
-	RTT       time.Duration
-	Bytes     int
-	Duration  time.Duration
-	Path      snet.Path
-}
-
-type QualityDB interface {
-	GetPathHighBandwidth(number int) PathSet
-	GetPathLowLatency(number int) PathSet
-	GetPathLargeMTU(number int) PathSet
-	GetPathSmallHopCount(number int) PathSet
-
-	//GetPathFunc takes as second argument a function that is
-	//then called recursively over all PathQuality pairs, always
-	//retaining the returned result as the first input for the
-	//next call. The path associated with the last returned
-	//PathQuality struct is then picked.
-	GetPathFunc(addr.HostAddr, func(PathQuality, PathQuality) PathQuality) snet.Path
-	//GetPathCustom takes as second argument a function that is
-	//called with the PathQuality array of all the alternative
-	//paths for the host address. The path associated with the
-	//returned PathQuality is then returned
-	GetPathCustom(addr.HostAddr, func([]PathQuality) PathQuality) snet.Path
-}
-
+/*
 type MeasuringReaderWriter interface {
 	io.Reader
 	io.Writer
 	Measure(snet.Path) chan PathQuality
 }
-
+*/
 //TODO: can be removed?
 //func NewPathSet() QualityDB {
 //	//return &PathSet{}
@@ -122,14 +189,16 @@ type CustomPathSelection interface {
 	CustomPathSelectAlg(*PathSet) (*PathSet, error)
 }
 
-func InitHashMap() {
-	hashMap = make(map[string]int)
+func NewInMemoryPathQualityDatabase() *InMemoryPathQualityDatabase {
+	return &InMemoryPathQualityDatabase{
+		hashMap: make(map[string]int),
+	}
 }
 
-func QueryPaths(addr *snet.UDPAddr) (PathSet, error) {
+func (db *InMemoryPathQualityDatabase) UpdatePathQualities(addr *snet.UDPAddr) error {
 	paths, err := appnet.DefNetwork().PathQuerier.Query(context.Background(), addr.IA)
 	if err != nil {
-		return PathSet{}, err
+		return err
 	}
 	var pathQualities []PathQuality
 	for _, path := range paths {
@@ -138,15 +207,15 @@ func QueryPaths(addr *snet.UDPAddr) (PathSet, error) {
 	}
 	tmpPathSet := PathSet{Address: *addr, Paths: pathQualities}
 
-	if i, contained := hashMap[calcAddrHash(addr)]; contained {
+	if i, contained := db.hashMap[calcAddrHash(addr)]; contained {
 		//update PathSetDB entry if already existing
-		PathSetDB[i] = tmpPathSet
+		db.pathSetDB[i] = tmpPathSet
 	} else {
-		PathSetDB = append(PathSetDB, tmpPathSet)
+		db.pathSetDB = append(db.pathSetDB, tmpPathSet)
 		hash := calcAddrHash(addr)
-		hashMap[hash] = len(PathSetDB) - 1
+		db.hashMap[hash] = len(db.pathSetDB) - 1
 	}
-	return tmpPathSet, nil
+	return nil
 }
 
 func UnwrapPathset(pathset PathSet) []snet.Path {
