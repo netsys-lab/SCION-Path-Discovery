@@ -1,7 +1,6 @@
 package packets
 
 import (
-	"fmt"
 	"net"
 
 	optimizedconn "github.com/johannwagner/scion-optimized-connection/pkg"
@@ -55,9 +54,7 @@ func (sc *SCIONConn) WriteStream(b []byte) (int, error) {
 
 // This simply wraps conn.Read and will later collect metrics
 func (sc *SCIONConn) Read(b []byte) (int, error) {
-	fmt.Printf("Waiting on %s\n", sc.internalConn.LocalAddr())
 	n, err := sc.internalConn.Read(b)
-	fmt.Printf("Read %d bytes\n", n)
 	if err != nil {
 		return n, err
 	}
@@ -69,7 +66,6 @@ func (sc *SCIONConn) Read(b []byte) (int, error) {
 // This simply wraps conn.Write and will later collect metrics
 func (sc *SCIONConn) Write(b []byte) (int, error) {
 	n, err := sc.internalConn.Write(b)
-	fmt.Printf("Wrote %d bytes to remote %s\n", n, sc.remote)
 	sc.metrics.WrittenBytes += int64(n)
 	sc.metrics.WrittenPackets++
 	if err != nil {

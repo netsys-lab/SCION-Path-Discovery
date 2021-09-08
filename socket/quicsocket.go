@@ -3,7 +3,6 @@ package socket
 import (
 	"bytes"
 	"encoding/gob"
-	"fmt"
 
 	"github.com/netsys-lab/scion-path-discovery/packets"
 	"github.com/scionproto/scion/go/lib/snet"
@@ -57,7 +56,6 @@ func (s *QUICSocket) WaitForDialIn() (*snet.UDPAddr, error) {
 	}
 
 	_, err = stream.Read(bts)
-	fmt.Println("Read something")
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +74,6 @@ func (s *QUICSocket) WaitForDialIn() (*snet.UDPAddr, error) {
 
 func (s *QUICSocket) Dial(remote snet.UDPAddr, path snet.Path, options DialOptions) (packets.UDPConn, error) {
 	// appnet.SetPath(&remote, path)
-	// fmt.Printf("Dialing to %s via %s\n", remote.String(), remote.Path)
 	conn := packets.QUICConnConstructor()
 	conn.SetLocal(*s.localAddr)
 	err := conn.Dial(remote, &path)
@@ -112,7 +109,6 @@ func (s *QUICSocket) DialAll(remote snet.UDPAddr, path []snet.Path, options Dial
 		}
 		conns = append(conns, conn)
 	}
-	fmt.Println("Dial all#1")
 
 	return conns, nil
 }

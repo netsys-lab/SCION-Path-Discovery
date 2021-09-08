@@ -84,6 +84,10 @@ func (db *InMemoryPathQualityDatabase) SetDialConnections(conns []packets.UDPCon
 func (db *InMemoryPathQualityDatabase) UpdateMetrics() {
 	// TODO: Do listen Cons have paths?
 	for _, v := range db.listenConns {
+
+		if v.GetRemote() == nil {
+			continue
+		}
 		pathQuality, err := db.getPathQuality(v.GetRemote(), v.GetPath())
 		if err != nil {
 			log.Fatal(err)
@@ -169,7 +173,10 @@ type MeasuringReaderWriter interface {
 //	return nil
 //}
 
-func SelectPaths(count int, pathSet *PathSet) (newPathSet *PathSet) {
+func SelectPaths(count int, pathSet *PathSet) *PathSet {
+	newPathSet := &PathSet{
+		Paths: make([]PathQuality, 0),
+	}
 	lenPaths := len(pathSet.Paths)
 	numPathsToReturn := 0
 	if lenPaths > 0 {

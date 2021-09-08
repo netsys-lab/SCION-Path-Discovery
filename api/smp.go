@@ -1,13 +1,13 @@
 package smp
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/netsys-lab/scion-path-discovery/packets"
 	"github.com/netsys-lab/scion-path-discovery/pathselection"
 	"github.com/netsys-lab/scion-path-discovery/socket"
 	"github.com/scionproto/scion/go/lib/snet"
+	log "github.com/sirupsen/logrus"
 	// "github.com/netsys-lab/scion-multipath-lib/peers"
 )
 
@@ -62,6 +62,7 @@ type MPPeerSock struct {
 	UnderlaySocket          socket.UnderlaySocket
 	TransportConstructor    packets.TransportConstructor
 	PathQualityDB           pathselection.PathQualityDatabase
+	SelectedPathSet         *pathselection.PathSet
 }
 
 func NewMPPeerSock(local string, peer *snet.UDPAddr) *MPPeerSock {
@@ -89,22 +90,26 @@ func (mp *MPPeerSock) Listen() error {
 	listenCons := mp.UnderlaySocket.GetListenConnections()
 	mp.PacketScheduler.SetListenConnections(listenCons)
 	mp.PathQualityDB.SetListenConnections(listenCons)
+	log.Debugf("Listening on %s", mp.Local)
 	return nil
 }
 
 func (mp *MPPeerSock) WaitForPeerConnect(pathSetWrapper pathselection.CustomPathSelection) (*snet.UDPAddr, error) {
+	log.Debugf("Waiting for incoming connection")
 	remote, err := mp.UnderlaySocket.WaitForDialIn()
 	if err != nil {
 		return nil, err
 	}
+	log.Debugf("Accepted connection from %s", remote.String())
 	mp.Peer = remote
 
 	// Start selection process -> will update DB
 	mp.StartPathSelection(pathSetWrapper)
 	// wait until first signal on channel
-	selectedPathSet := <-mp.OnPathsetChange
+	// selectedPathSet := <-mp.OnPathsetChange
+
 	// dial all paths selected by user algorithm
-	err = mp.DialAll(&selectedPathSet, &ConnectOptions{
+	err = mp.DialAll(mp.SelectedPathSet, &ConnectOptions{
 		SendAddrPacket: false,
 	})
 
@@ -126,9 +131,15 @@ func (mp *MPPeerSock) StartPathSelection(pathSetWrapper pathselection.CustomPath
 
 	ticker := time.NewTicker(10 * time.Second)
 
-	for range ticker.C {
-		mp.pathSelection(pathSetWrapper)
-	}
+	go func() {
+		for range ticker.C {
+			if mp.Peer != nil {
+				mp.pathSelection(pathSetWrapper)
+				mp.DialAll(mp.SelectedPathSet, nil)
+			}
+
+		}
+	}()
 
 	mp.pathSelection(pathSetWrapper)
 
@@ -144,8 +155,12 @@ func (mp *MPPeerSock) pathSelection(pathSetWrapper pathselection.CustomPathSelec
 	if err != nil {
 		return
 	}
+	// TODO: Error handling
 	selectedPathSet, err := pathSetWrapper.CustomPathSelectAlg(&pathSet)
-	mp.OnPathsetChange <- *selectedPathSet
+	mp.SelectedPathSet = selectedPathSet
+	// mp.DialAll(selectedPathSet, &ConnectOptions{})
+	mp.pathSetChange(*selectedPathSet)
+	// mp.OnPathsetChange <- *selectedPathSet
 }
 
 //
@@ -181,19 +196,21 @@ func (mp *MPPeerSock) Connect(pathSetWrapper pathselection.CustomPathSelection, 
 	}
 	var err error
 
-	selectedPathSet := <-mp.OnPathsetChange
-	err = mp.DialAll(&selectedPathSet, opts)
+	/*selectedPathSet, err := mp.PathQualityDB.GetPathSet(mp.Peer)
+	if err != nil {
+		return err
+	}*/
+	err = mp.DialAll(mp.SelectedPathSet, opts)
 	if err != nil {
 		return err
 	}
-	fmt.Println("Dialed all")
 	return nil
 }
 
-func (mp *MPPeerSock) pathSetChange() {
+func (mp *MPPeerSock) pathSetChange(selectedPathset pathselection.PathSet) {
 	select {
 	// TODO: Fixme
-	// case mp.OnPathsetChange <- mp.SelectedPathset:
+	case mp.OnPathsetChange <- selectedPathset:
 	default:
 	}
 }
@@ -232,6 +249,8 @@ func (mp *MPPeerSock) DialAll(pathAlternatives *pathselection.PathSet, options *
 	if err != nil {
 		return err
 	}
+
+	log.Debugf("Dialled all to %s", mp.Peer.String())
 
 	mp.PacketScheduler.SetDialConnections(conns)
 	mp.PathQualityDB.SetDialConnections(conns)

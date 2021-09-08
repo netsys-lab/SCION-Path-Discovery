@@ -3,10 +3,10 @@ package socket
 import (
 	"bytes"
 	"encoding/gob"
-	"fmt"
 
 	"github.com/netsys-lab/scion-path-discovery/packets"
 	"github.com/scionproto/scion/go/lib/snet"
+	log "github.com/sirupsen/logrus"
 )
 
 var _ UnderlaySocket = (*SCIONSocket)(nil)
@@ -57,9 +57,8 @@ func (s *SCIONSocket) WaitForDialIn() (*snet.UDPAddr, error) {
 	bts := make([]byte, packets.PACKET_SIZE)
 	// We assume that the first conn here is always the one that was initialized by listen()
 	// Other cons could be added due to handshakes (QUIC specific)
-	fmt.Printf("Waiting for input on %s", s.local)
+	// fmt.Printf("Waiting for input on %s", s.local)
 	_, err := s.listenConns[0].Read(bts)
-	fmt.Println("Read something")
 	if err != nil {
 		return nil, err
 	}
@@ -86,11 +85,13 @@ func (s *SCIONSocket) Dial(remote snet.UDPAddr, path snet.Path, options DialOpti
 		return nil, err
 	}
 
+	log.Debugf("Dialing to remote %s from %s\n", remote.String(), s.localAddr.String())
+
 	if options.SendAddrPacket {
 		var network bytes.Buffer
 		enc := gob.NewEncoder(&network) // Will write to network.
 		p := DialPacket{
-			Addr: remote,
+			Addr: *s.localAddr,
 		}
 
 		err := enc.Encode(p)
@@ -114,7 +115,6 @@ func (s *SCIONSocket) DialAll(remote snet.UDPAddr, path []snet.Path, options Dia
 		}
 		conns = append(conns, conn)
 	}
-	fmt.Println("Dial all#1")
 
 	return conns, nil
 }
