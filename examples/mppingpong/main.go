@@ -67,6 +67,17 @@ func main() {
 		os.Exit(1)
 	}
 
+	go func() {
+		for {
+			log.Info("Waiting for new connections")
+			conns := <-mpSock.OnConnectionsChange
+			log.Infof("New Connections available, got %d", len(conns))
+			for i, v := range conns {
+				log.Infof("Connection %d is %s", i, packets.ConnTypeToString(v.GetType()))
+			}
+		}
+	}()
+
 	log.Infof("Listening on %s", *localAddr)
 
 	if *isServer {

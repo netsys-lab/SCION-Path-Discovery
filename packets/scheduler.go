@@ -17,8 +17,7 @@ type PacketScheduler interface {
 	Read([]byte) (int, error)
 	WriteStream([]byte) (int, error)
 	ReadStream([]byte) (int, error)
-	SetListenConnections([]UDPConn)
-	SetDialConnections([]UDPConn)
+	SetConnections([]UDPConn)
 }
 
 func NewWeighedScheduler(local snet.UDPAddr) *SampleFirstPathScheduler {
@@ -33,9 +32,8 @@ func NewWeighedScheduler(local snet.UDPAddr) *SampleFirstPathScheduler {
 // PathQualities and sends packets depending on the weight of
 // each alternative
 type SampleFirstPathScheduler struct {
-	listenConnections []UDPConn
-	local             snet.UDPAddr
-	dialConnections   []UDPConn
+	connections []UDPConn
+	local       snet.UDPAddr
 }
 
 /*func (ws *WeighedScheduler) Accept() (*peers.PathlevelPeer, error) {
@@ -53,13 +51,8 @@ type SampleFirstPathScheduler struct {
 	return peer, nil
 }*/
 
-func (ws *SampleFirstPathScheduler) SetDialConnections(conns []UDPConn) {
-	ws.dialConnections = conns
-}
-
-// TODO: Filter identical connections?
-func (ws *SampleFirstPathScheduler) SetListenConnections(conns []UDPConn) {
-	ws.listenConnections = conns
+func (ws *SampleFirstPathScheduler) SetConnections(conns []UDPConn) {
+	ws.connections = conns
 }
 
 /*func (ws *WeighedScheduler) SetPathlevelPeers(peers []peers.PathlevelPeer) error {
@@ -83,30 +76,30 @@ func (ws *SampleFirstPathScheduler) SetListenConnections(conns []UDPConn) {
 }*/
 
 func (ws *SampleFirstPathScheduler) Write(data []byte) (int, error) {
-	if len(ws.dialConnections) < 1 {
+	if len(ws.connections) < 2 {
 		return 0, errors.New("No connection available to write")
 	}
-	return ws.dialConnections[0].Write(data)
+	return ws.connections[1].Write(data)
 }
 func (ws *SampleFirstPathScheduler) Read(data []byte) (int, error) {
-	if len(ws.listenConnections) < 1 {
+	if len(ws.connections) < 1 {
 		return 0, errors.New("No connection available to read")
 	}
 	// We assume that the first conn here is always the one that was initialized by listen()
 	// Other cons could be added due to handshakes (QUIC specific)
-	return ws.listenConnections[0].Read(data)
+	return ws.connections[0].Read(data)
 }
 func (ws *SampleFirstPathScheduler) WriteStream(data []byte) (int, error) {
-	if len(ws.dialConnections) < 1 {
+	if len(ws.connections) < 2 {
 		return 0, errors.New("No connection available to writeStrean")
 	}
-	return ws.dialConnections[0].WriteStream(data)
+	return ws.connections[1].WriteStream(data)
 }
 func (ws *SampleFirstPathScheduler) ReadStream(data []byte) (int, error) {
-	if len(ws.listenConnections) < 1 {
+	if len(ws.connections) < 1 {
 		return 0, errors.New("No connection available to readStream")
 	}
 	// We assume that the first conn here is always the one that was initialized by listen()
 	// Other cons could be added due to handshakes (QUIC specific)
-	return ws.listenConnections[0].ReadStream(data)
+	return ws.connections[0].ReadStream(data)
 }
