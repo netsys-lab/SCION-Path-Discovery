@@ -50,7 +50,7 @@ func (s *SCIONSocket) Listen() error {
 	return conn.Listen(*s.localAddr)
 }
 
-func (s *SCIONSocket) WaitForDialIn() (*snet.UDPAddr, error) {
+func (s *SCIONSocket) WaitForDialIn(wait bool) (*snet.UDPAddr, error) {
 	// TODO: Close
 	bts := make([]byte, packets.PACKET_SIZE)
 	// We assume that the first conn here is always the one that was initialized by listen()

@@ -10,11 +10,13 @@ import (
 	"github.com/netsec-ethz/scion-apps/pkg/appnet"
 	"github.com/netsec-ethz/scion-apps/pkg/appnet/appquic"
 	"github.com/scionproto/scion/go/lib/snet"
+
+	log "github.com/sirupsen/logrus"
 )
 
 var _ UDPConn = (*QUICReliableConn)(nil)
 
-func QUICConnConstructor() *QUICReliableConn {
+func QUICConnConstructor() UDPConn {
 	return &QUICReliableConn{}
 }
 
@@ -33,10 +35,14 @@ type QUICReliableConn struct { // Former: MonitoredConn
 	state        int // See Connection States
 	metrics      PathMetrics
 	local        *snet.UDPAddr
+	Ready        chan bool
 }
 
 // This simply wraps conn.Read and will later collect metrics
 func (qc *QUICReliableConn) Read(b []byte) (int, error) {
+	if qc.internalConn == nil {
+		<-qc.Ready
+	}
 	n, err := qc.internalConn.Read(b)
 	if err != nil {
 		return n, err
@@ -51,9 +57,21 @@ func (qc *QUICReliableConn) Dial(addr snet.UDPAddr, path *snet.Path) error {
 	if err != nil {
 		return err
 	}
-	session, err := quic.Dial(sconn, &addr, "127.0.0.1", &tls.Config{
-		Certificates: appquic.GetDummyTLSCerts(),
-		NextProtos:   []string{"scion-filetransfer"},
+
+	if addr.Path.IsEmpty() {
+		appnet.SetPath(&addr, *path)
+	}
+
+	qc.peer = addr.String()
+	qc.path = path
+
+	host := appnet.MangleSCIONAddr(qc.peer)
+	log.Debugf("Dialing to %s and host %s", addr.String(), qc.peer)
+
+	session, err := quic.Dial(sconn, &addr, host, &tls.Config{
+		Certificates:       appquic.GetDummyTLSCerts(),
+		NextProtos:         []string{"scion-filetransfer"},
+		InsecureSkipVerify: true,
 	}, &quic.Config{
 		KeepAlive: true,
 	})
@@ -62,11 +80,15 @@ func (qc *QUICReliableConn) Dial(addr snet.UDPAddr, path *snet.Path) error {
 		return err
 	}
 
+	log.Debugf("Opening Stream to %s", addr.String())
+
 	qc.session = session
-	stream, err := session.OpenStream()
+	stream, err := session.OpenStreamSync(context.Background())
 	if err != nil {
 		return err
 	}
+
+	log.Debugf("Opened Stream to %s", addr.String())
 
 	qc.internalConn = stream
 
@@ -125,6 +147,7 @@ func (qc *QUICReliableConn) Close() error {
 }
 
 func (qc *QUICReliableConn) AcceptStream() (quic.Stream, error) {
+	log.Debugf("Accepting on quic %s", qc.listener.Addr())
 	session, err := qc.listener.Accept(context.Background())
 	if err != nil {
 		return nil, err
@@ -135,12 +158,13 @@ func (qc *QUICReliableConn) AcceptStream() (quic.Stream, error) {
 		return nil, err
 	}
 
-	qc.internalConn = stream
+	// qc.internalConn = stream
 
 	return stream, nil
 }
 
 func (qc *QUICReliableConn) Listen(addr snet.UDPAddr) error {
+	qc.Ready = make(chan bool, 0)
 	udpAddr := net.UDPAddr{
 		IP:   addr.Host.IP,
 		Port: addr.Host.Port,
@@ -156,6 +180,8 @@ func (qc *QUICReliableConn) Listen(addr snet.UDPAddr) error {
 	}, &quic.Config{
 		KeepAlive: true,
 	})
+
+	log.Debugf("Listen on quic %s wtih scion %s", listener.Addr(), sconn.LocalAddr())
 
 	if err != nil {
 		return err
@@ -185,4 +211,8 @@ func (qc *QUICReliableConn) SetRemote(remote *snet.UDPAddr) {
 }
 func (qc *QUICReliableConn) SetLocal(local snet.UDPAddr) {
 	qc.local = &local
+}
+
+func (qc *QUICReliableConn) SetStream(stream quic.Stream) {
+	qc.internalConn = stream
 }

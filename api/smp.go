@@ -70,8 +70,8 @@ func NewMPPeerSock(local string, peer *snet.UDPAddr) *MPPeerSock {
 		Peer:                 peer,
 		Local:                local,
 		OnPathsetChange:      make(chan pathselection.PathSet),
-		TransportConstructor: packets.SCIONTransportConstructor,
-		UnderlaySocket:       socket.NewSCIONSocket(local, packets.SCIONTransportConstructor),
+		TransportConstructor: packets.QUICConnConstructor,
+		UnderlaySocket:       socket.NewQUICSocket(local),
 		PacketScheduler:      &packets.SampleFirstPathScheduler{},
 		PathQualityDB:        pathselection.NewInMemoryPathQualityDatabase(),
 		OnConnectionsChange:  make(chan []packets.UDPConn),
@@ -97,7 +97,7 @@ func (mp *MPPeerSock) Listen() error {
 
 func (mp *MPPeerSock) WaitForPeerConnect(pathSetWrapper pathselection.CustomPathSelection) (*snet.UDPAddr, error) {
 	log.Debugf("Waiting for incoming connection")
-	remote, err := mp.UnderlaySocket.WaitForDialIn()
+	remote, err := mp.UnderlaySocket.WaitForDialIn(true)
 	if err != nil {
 		return nil, err
 	}
@@ -108,13 +108,25 @@ func (mp *MPPeerSock) WaitForPeerConnect(pathSetWrapper pathselection.CustomPath
 	mp.StartPathSelection(pathSetWrapper)
 	// wait until first signal on channel
 	// selectedPathSet := <-mp.OnPathsetChange
-
+	time.Sleep(1 * time.Second)
 	// dial all paths selected by user algorithm
 	err = mp.DialAll(mp.SelectedPathSet, &ConnectOptions{
 		SendAddrPacket: false,
 	})
 
 	return remote, err
+}
+
+func (mp *MPPeerSock) WaitForPeerConnectBack() (*snet.UDPAddr, error) {
+	log.Debugf("Waiting for incoming connection")
+	_, err := mp.UnderlaySocket.WaitForDialIn(false)
+	if err != nil {
+		return nil, err
+	}
+	log.Debugf("Accepted connection back %s", mp.Peer)
+	// mp.Peer = remote
+
+	return nil, err
 }
 
 func (mp *MPPeerSock) StartPathSelection(pathSetWrapper pathselection.CustomPathSelection) {
