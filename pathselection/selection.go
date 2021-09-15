@@ -47,8 +47,7 @@ type SelecteablePathSet interface {
 
 type PathQualityDatabase interface {
 	GetPathSet(addr *snet.UDPAddr) (PathSet, error)
-	SetListenConnections([]packets.UDPConn)
-	SetDialConnections([]packets.UDPConn)
+	SetConnections([]packets.UDPConn)
 	UpdatePathQualities(addr *snet.UDPAddr) error
 	UpdateMetrics()
 
@@ -69,38 +68,20 @@ type PathQualityDatabase interface {
 type InMemoryPathQualityDatabase struct {
 	pathSetDB   []PathSet
 	hashMap     map[string]int
-	listenConns []packets.UDPConn
-	dialConns   []packets.UDPConn
+	connections []packets.UDPConn
 }
 
-func (db *InMemoryPathQualityDatabase) SetListenConnections(conns []packets.UDPConn) {
-	db.listenConns = conns
-}
-
-func (db *InMemoryPathQualityDatabase) SetDialConnections(conns []packets.UDPConn) {
-	db.dialConns = conns
+func (db *InMemoryPathQualityDatabase) SetConnections(conns []packets.UDPConn) {
+	db.connections = conns
 }
 
 func (db *InMemoryPathQualityDatabase) UpdateMetrics() {
 	// TODO: Do listen Cons have paths?
-	for _, v := range db.listenConns {
+	for _, v := range db.connections {
 
 		if v.GetRemote() == nil {
 			continue
 		}
-		pathQuality, err := db.getPathQuality(v.GetRemote(), v.GetPath())
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		connMetrics := v.GetMetrics()
-		pathQuality.ReadBytes += connMetrics.ReadBytes
-		pathQuality.WrittenBytes += connMetrics.WrittenBytes
-		pathQuality.ReadPackets += connMetrics.ReadPackets
-		pathQuality.WrittenPackets += connMetrics.WrittenPackets
-	}
-
-	for _, v := range db.dialConns {
 		pathQuality, err := db.getPathQuality(v.GetRemote(), v.GetPath())
 		if err != nil {
 			log.Fatal(err)

@@ -15,6 +15,5 @@ type UnderlaySocket interface {
 	Dial(remote snet.UDPAddr, path snet.Path, options DialOptions) (packets.UDPConn, error)
 	DialAll(remote snet.UDPAddr, path []snet.Path, options DialOptions) ([]packets.UDPConn, error)
 	CloseAll() []error
-	GetListenConnections() []packets.UDPConn
-	GetDialConnections() []packets.UDPConn
+	GetConnections() []packets.UDPConn
 }

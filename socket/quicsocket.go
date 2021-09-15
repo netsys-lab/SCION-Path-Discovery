@@ -113,7 +113,7 @@ func (s *QUICSocket) DialAll(remote snet.UDPAddr, path []snet.Path, options Dial
 	return conns, nil
 }
 
-func (s *QUICSocket) GetListenConnections() []packets.UDPConn {
+func (s *QUICSocket) GetConnections() []packets.UDPConn {
 	conns := make([]packets.UDPConn, 0)
 	for _, v := range s.listenConns {
 		conns = append(conns, v)

@@ -16,6 +16,10 @@ func SCIONTransportConstructor() UDPConn {
 	return &SCIONConn{}
 }
 
+func (sc *SCIONConn) GetType() int {
+	return sc.connType
+}
+
 // This one extends a SCION connection to collect metrics for each connection
 // Since a connection has always one path, the metrics are also path metrics
 // 0.0.3: Collecting metrics for read and written bytes is better at a place
@@ -28,6 +32,7 @@ type SCIONConn struct { // Former: MonitoredConn
 	metrics      PathMetrics
 	remote       *snet.UDPAddr
 	local        *net.UDPAddr
+	connType     int
 }
 
 // This simply wraps conn.Read and will later collect metrics
@@ -83,6 +88,7 @@ func (sc *SCIONConn) Dial(addr snet.UDPAddr, path *snet.Path) error {
 	sc.remote = &addr
 	sc.path = path
 	sc.internalConn = conn
+	sc.connType = ConnectionTypes.Outgoing
 	return nil
 
 }
@@ -98,6 +104,7 @@ func (sc *SCIONConn) Listen(addr snet.UDPAddr) error {
 	}
 	sc.internalConn = conn
 	sc.local = &udpAddr
+	sc.connType = ConnectionTypes.Incoming
 	return nil
 }
 

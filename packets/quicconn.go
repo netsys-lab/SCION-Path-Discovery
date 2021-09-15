@@ -18,6 +18,10 @@ func QUICConnConstructor() *QUICReliableConn {
 	return &QUICReliableConn{}
 }
 
+func (qc *QUICReliableConn) GetType() int {
+	return ConnectionTypes.Bidirectional
+}
+
 // TODO: Implement SCION/QUIC here
 type QUICReliableConn struct { // Former: MonitoredConn
 	internalConn quic.Stream

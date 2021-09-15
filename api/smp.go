@@ -74,6 +74,7 @@ func NewMPPeerSock(local string, peer *snet.UDPAddr) *MPPeerSock {
 		UnderlaySocket:       socket.NewSCIONSocket(local, packets.SCIONTransportConstructor),
 		PacketScheduler:      &packets.SampleFirstPathScheduler{},
 		PathQualityDB:        pathselection.NewInMemoryPathQualityDatabase(),
+		OnConnectionsChange:  make(chan []packets.UDPConn),
 	}
 }
 
@@ -87,9 +88,9 @@ func (mp *MPPeerSock) Listen() error {
 		return err
 	}
 
-	listenCons := mp.UnderlaySocket.GetListenConnections()
-	mp.PacketScheduler.SetListenConnections(listenCons)
-	mp.PathQualityDB.SetListenConnections(listenCons)
+	conns := mp.UnderlaySocket.GetConnections()
+	mp.PacketScheduler.SetConnections(conns)
+	mp.PathQualityDB.SetConnections(conns)
 	log.Debugf("Listening on %s", mp.Local)
 	return nil
 }
@@ -223,7 +224,7 @@ func (mp *MPPeerSock) connectionSetChange(conns []packets.UDPConn) {
 }
 
 func (mp *MPPeerSock) Disconnect() []error {
-	mp.PacketScheduler.SetDialConnections(make([]packets.UDPConn, 0))
+	mp.PacketScheduler.SetConnections(make([]packets.UDPConn, 0))
 	return mp.UnderlaySocket.CloseAll()
 }
 
@@ -250,11 +251,10 @@ func (mp *MPPeerSock) DialAll(pathAlternatives *pathselection.PathSet, options *
 		return err
 	}
 
-	log.Debugf("Dialled all to %s", mp.Peer.String())
+	log.Debugf("Dialled all to %s, got %d connections", mp.Peer.String(), len(conns))
 
-	mp.PacketScheduler.SetDialConnections(conns)
-	mp.PathQualityDB.SetDialConnections(conns)
-	// mp.OnConnectionsChange <- conns
+	mp.PacketScheduler.SetConnections(conns)
+	mp.PathQualityDB.SetConnections(conns)
 	mp.connectionSetChange(conns)
 	return nil
 }
