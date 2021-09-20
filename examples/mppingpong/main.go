@@ -1,15 +1,17 @@
 package main
 
 import (
+	"encoding/gob"
 	"flag"
-	"os"
-	"time"
-
 	smp "github.com/netsys-lab/scion-path-discovery/api"
 	"github.com/netsys-lab/scion-path-discovery/packets"
 	"github.com/netsys-lab/scion-path-discovery/pathselection"
 	"github.com/scionproto/scion/go/lib/snet"
+	"github.com/scionproto/scion/go/lib/snet/path"
 	log "github.com/sirupsen/logrus"
+	"os"
+	"strconv"
+	"time"
 )
 
 //LastSelection users could add more fields
@@ -19,9 +21,10 @@ type LastSelection struct {
 
 //CustomPathSelectAlg this is where the user actually wants to implement its logic in
 func (lastSel *LastSelection) CustomPathSelectAlg(pathSet *pathselection.PathSet) (*pathselection.PathSet, error) {
-	return pathSet.GetPathHighBandwidth(3), nil
+	return pathSet.GetPathHighBandwidth(*numConns), nil
 }
 
+var numConns *int = flag.Int("n", 1, "Max number of outgoing connections")
 var localAddr *string = flag.String("l", "localhost:9999", "Set the local address")
 var remoteAddr *string = flag.String("r", "localhost:80", "Set the remote address")
 var isServer *bool = flag.Bool("s", false, "Run as Server (otherwise, client)")
@@ -58,6 +61,8 @@ func main() {
 	// peers := []string{"peer1", "peer2", "peer3"} // Later real addresses
 	flag.Parse()
 	setLoging()
+	log.SetLevel(log.DebugLevel)
+	gob.Register(path.Path{})
 	lastSelection := LastSelection{}
 
 	mpSock := smp.NewMPPeerSock(*localAddr, nil)
@@ -70,7 +75,7 @@ func main() {
 	go func() {
 		for {
 			log.Info("Waiting for new connections")
-			conns := <-mpSock.OnConnectionsChange
+			conns := <- mpSock.OnConnectionsChange
 			log.Infof("New Connections available, got %d", len(conns))
 			for i, v := range conns {
 				log.Infof("Connection %d is %s", i, packets.ConnTypeToString(v.GetType()))
@@ -84,27 +89,44 @@ func main() {
 		remote, err := mpSock.WaitForPeerConnect(&lastSelection)
 		if err != nil {
 			log.Fatal("Failed to connect in-dialing peer", err)
-			os.Exit(1)
 		}
 		log.Infof("Connected to %s", remote.String())
 		for {
-			bts := make([]byte, packets.PACKET_SIZE)
-			n, err := mpSock.Read(bts)
-			if err != nil {
-				log.Fatalf("Failed to read bytes from peer %s, err: %v", remote.String(), err)
-				os.Exit(1)
+			for _, conn := range mpSock.UnderlaySocket.GetConnections() {
+				bts := make([]byte, packets.PACKET_SIZE)
+				if conn.GetType() == packets.ConnectionTypes.Incoming {
+					n, err := mpSock.Read(bts)
+					connNum := string(bts[:n])
+					//var p snet.Path
+					//network := bytes.NewBuffer(bts) // Stand-in for a network connection
+					//dec := gob.NewDecoder(network)
+					//err = dec.Decode(&p)
+					//
+					//println(p, i)
+
+					if err != nil {
+						log.Fatalf("Failed to read bytes from peer %s, err: %v", remote.String(), err)
+					}
+					log.Debugf("Read %d bytes from %s (origin %s)", n, remote.String(), connNum)
+					log.Infof("Ping from %s", remote.String())
+				}
+				//if conn.GetType() == packets.ConnectionTypes.Outgoing {
+				//	n, err := mpSock.Write(bts)
+				//	if err != nil {
+				//		log.Fatalf("Failed to write bytes from peer %s, err: %v", remote.String(), err)
+				//	}
+				//	log.Debugf("Wrote %d bytes to %s over conn %d", n, remote.String(), i)
+				//	log.Infof("Pong to %s", remote.String())
+				//}
+				//time.Sleep(1 * time.Second)
 			}
-			log.Debugf("Read %d bytes from %s", n, remote.String())
-			log.Infof("Pong from %s", remote.String())
-			n, err = mpSock.Write(bts)
-			if err != nil {
-				log.Fatalf("Failed to write bytes from peer %s, err: %v", remote.String(), err)
-				os.Exit(1)
-			}
-			log.Debugf("Wrote %d bytes to %s", n, remote.String())
-			log.Infof("Ping to %s", remote.String())
-			time.Sleep(1 * time.Second)
 		}
+
+
+
+
+
+
 
 	} else {
 		peerAddr, err := snet.ParseUDPAddr(*remoteAddr)
@@ -113,34 +135,40 @@ func main() {
 			os.Exit(1)
 		}
 		mpSock.SetPeer(peerAddr)
+
 		err = mpSock.Connect(&lastSelection, nil)
 		log.Infof("Connected to %s", *remoteAddr)
 		if err != nil {
 			log.Fatal("Failed to connect MPPeerSock", err)
-			os.Exit(1)
-		}
-		for {
-			bts := make([]byte, packets.PACKET_SIZE)
-			n, err := mpSock.Write(bts)
-			if err != nil {
-				log.Fatalf("Failed to write bytes from peer %s, err: %v", *remoteAddr, err)
-				os.Exit(1)
-			}
-			log.Debugf("Wrote %d bytes to %s", n, *remoteAddr)
-			log.Infof("Pong to %s", *remoteAddr)
-			n, err = mpSock.Read(bts)
-			if err != nil {
-				log.Fatalf("Failed to read bytes from peer %s, err: %v", *remoteAddr, err)
-				os.Exit(1)
-			}
-			log.Debugf("Read %d bytes from %s", n, *remoteAddr)
-			log.Infof("Ping from %s", *remoteAddr)
-			time.Sleep(1 * time.Second)
 		}
 
+		for {
+			for i, conn := range mpSock.UnderlaySocket.GetConnections() {
+				//bts := make([]byte, packets.PACKET_SIZE)
+				if conn.GetType() == packets.ConnectionTypes.Outgoing {
+					//var network bytes.Buffer
+					//enc := gob.NewEncoder(&network) // Will write to network.
+					//err := enc.Encode(conn.GetPath())
+					n, err := mpSock.Write([]byte(strconv.Itoa(i)))
+					if err != nil {
+						log.Fatalf("Failed to write bytes from peer %s, err: %v", *remoteAddr, err)
+					}
+					log.Debugf("Wrote %d bytes to %s over conn %d", n, *remoteAddr, i)
+					log.Infof("Ping to %s", *remoteAddr)
+				}
+				//if conn.GetType() == packets.ConnectionTypes.Incoming {
+				//	n, err := mpSock.Read(bts)
+				//	if err != nil {
+				//		log.Fatalf("Failed to read bytes from peer %s, err: %v", *remoteAddr, err)
+				//	}
+				//	log.Debugf("Read %d bytes from %s", n, *remoteAddr)
+				//	log.Infof("Pong from %s", *remoteAddr)
+				//}
+				time.Sleep(1 * time.Second)
+			}
+		}
 	}
 
-	// mpSock.
 	// mpSock.SetPeer(remote)
 	// mpSock.Connect(customPathSelectAlg)
 	defer mpSock.Disconnect()

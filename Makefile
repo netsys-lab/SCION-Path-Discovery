@@ -9,6 +9,8 @@ all: simple mppingpong
 .PHONY: mppingpong
 mppingpong:
 	$(CC) -o $(BUILDDIR)/$@ examples/mppingpong/*.go
+	cp -f $(BUILDDIR)/$@ /home/nicolas/Documents/BitTorrent/VM_e9e
+	cp -f $(BUILDDIR)/$@ /home/nicolas/Documents/BitTorrent/VM_ea6
 
 .PHONY: simple
 simple:
