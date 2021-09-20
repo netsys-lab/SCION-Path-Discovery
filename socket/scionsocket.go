@@ -50,7 +50,7 @@ func (s *SCIONSocket) Listen() error {
 	return conn.Listen(*s.localAddr)
 }
 
-func (s *SCIONSocket) WaitForDialIn(wait bool) (*snet.UDPAddr, error) {
+func (s *SCIONSocket) WaitForDialIn() (*snet.UDPAddr, error) {
 	// TODO: Close
 	bts := make([]byte, packets.PACKET_SIZE)
 	// We assume that the first conn here is always the one that was initialized by listen()
@@ -102,6 +102,10 @@ func (s *SCIONSocket) Dial(remote snet.UDPAddr, path snet.Path, options DialOpti
 	s.connections = append(s.connections, conn)
 
 	return conn, nil
+}
+
+func (s *SCIONSocket) WaitForIncomingConn() (packets.UDPConn, error) {
+	return nil, nil
 }
 
 func (s *SCIONSocket) DialAll(remote snet.UDPAddr, path []snet.Path, options DialOptions) ([]packets.UDPConn, error) {

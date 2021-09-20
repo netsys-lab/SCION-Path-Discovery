@@ -41,8 +41,10 @@ type QUICReliableConn struct { // Former: MonitoredConn
 // This simply wraps conn.Read and will later collect metrics
 func (qc *QUICReliableConn) Read(b []byte) (int, error) {
 	if qc.internalConn == nil {
+		log.Warnf("Waiting to be ready")
 		<-qc.Ready
 	}
+	log.Warnf("Ready")
 	n, err := qc.internalConn.Read(b)
 	if err != nil {
 		return n, err
@@ -194,6 +196,10 @@ func (qc *QUICReliableConn) Listen(addr snet.UDPAddr) error {
 
 func (qc *QUICReliableConn) GetMetrics() *PathMetrics {
 	return &qc.metrics
+}
+
+func (qc *QUICReliableConn) GetInternalConn() quic.Stream {
+	return qc.internalConn
 }
 
 func (qc *QUICReliableConn) GetPath() *snet.Path {

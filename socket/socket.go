@@ -11,7 +11,8 @@ type DialOptions struct {
 
 type UnderlaySocket interface {
 	Listen() error
-	WaitForDialIn(wait bool) (*snet.UDPAddr, error)
+	WaitForDialIn() (*snet.UDPAddr, error)
+	WaitForIncomingConn() (packets.UDPConn, error)
 	Dial(remote snet.UDPAddr, path snet.Path, options DialOptions) (packets.UDPConn, error)
 	DialAll(remote snet.UDPAddr, path []snet.Path, options DialOptions) ([]packets.UDPConn, error)
 	CloseAll() []error

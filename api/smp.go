@@ -97,7 +97,7 @@ func (mp *MPPeerSock) Listen() error {
 
 func (mp *MPPeerSock) WaitForPeerConnect(pathSetWrapper pathselection.CustomPathSelection) (*snet.UDPAddr, error) {
 	log.Debugf("Waiting for incoming connection")
-	remote, err := mp.UnderlaySocket.WaitForDialIn(true)
+	remote, err := mp.UnderlaySocket.WaitForDialIn()
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +108,7 @@ func (mp *MPPeerSock) WaitForPeerConnect(pathSetWrapper pathselection.CustomPath
 	mp.StartPathSelection(pathSetWrapper)
 	// wait until first signal on channel
 	// selectedPathSet := <-mp.OnPathsetChange
-	time.Sleep(1 * time.Second)
+	// time.Sleep(1 * time.Second)
 	// dial all paths selected by user algorithm
 	err = mp.DialAll(mp.SelectedPathSet, &ConnectOptions{
 		SendAddrPacket: false,
@@ -117,9 +117,10 @@ func (mp *MPPeerSock) WaitForPeerConnect(pathSetWrapper pathselection.CustomPath
 	return remote, err
 }
 
+/*
 func (mp *MPPeerSock) WaitForPeerConnectBack() (*snet.UDPAddr, error) {
 	log.Debugf("Waiting for incoming connection")
-	_, err := mp.UnderlaySocket.WaitForDialIn(false)
+	_, err := mp.UnderlaySocket.WaitForDialIn()
 	if err != nil {
 		return nil, err
 	}
@@ -128,6 +129,7 @@ func (mp *MPPeerSock) WaitForPeerConnectBack() (*snet.UDPAddr, error) {
 
 	return nil, err
 }
+*/
 
 func (mp *MPPeerSock) StartPathSelection(pathSetWrapper pathselection.CustomPathSelection) {
 	// DONE!
@@ -142,7 +144,8 @@ func (mp *MPPeerSock) StartPathSelection(pathSetWrapper pathselection.CustomPath
 	// one could invoke this event here...
 	// To connect over the new pathset, call mpSock.DialAll(pathset)
 
-	ticker := time.NewTicker(10 * time.Second)
+	// TODO: 10 seconds
+	ticker := time.NewTicker(100 * time.Second)
 
 	go func() {
 		for range ticker.C {
@@ -263,7 +266,27 @@ func (mp *MPPeerSock) DialAll(pathAlternatives *pathselection.PathSet, options *
 		return err
 	}
 
-	log.Debugf("Dialled all to %s, got %d connections", mp.Peer.String(), len(conns))
+	log.Debugf("Dialed all to %s, got %d connections", mp.Peer.String(), len(conns))
+
+	go func() {
+		for {
+			log.Debugf("Waiting for new connections...")
+			conn, err := mp.UnderlaySocket.WaitForIncomingConn()
+			if conn == nil && err == nil {
+				log.Debugf("Socket does not implement WaitForIncomingConn, stopping here...")
+				return
+			}
+			if err != nil {
+				log.Errorf("Failed to wait for incoming connection %s", err.Error())
+				return
+			}
+
+			conns = mp.UnderlaySocket.GetConnections()
+			mp.PacketScheduler.SetConnections(conns)
+			mp.PathQualityDB.SetConnections(conns)
+			mp.connectionSetChange(conns)
+		}
+	}()
 
 	mp.PacketScheduler.SetConnections(conns)
 	mp.PathQualityDB.SetConnections(conns)

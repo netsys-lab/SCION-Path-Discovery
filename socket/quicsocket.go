@@ -61,7 +61,36 @@ func (s *QUICSocket) Listen() error {
 	return err
 }
 
-func (s *QUICSocket) WaitForDialIn(wait bool) (*snet.UDPAddr, error) {
+func (s *QUICSocket) WaitForIncomingConn() (packets.UDPConn, error) {
+	stream, err := s.listenConns[0].AcceptStream()
+	if err != nil {
+		log.Fatalf("QUIC Accept err %s", err.Error())
+	}
+
+	log.Debugf("Accepted new Stream on listen socket")
+
+	if s.listenConns[0].GetInternalConn() == nil {
+		log.Warnf("Set stream to listen conn")
+		s.listenConns[0].SetStream(stream)
+		select {
+		case s.listenConns[0].Ready <- true:
+		default:
+		}
+
+		log.Debugf("Set connection ready")
+		return s.listenConns[0], nil
+	} else {
+		newConn := &packets.QUICReliableConn{}
+		newConn.SetLocal(*s.localAddr)
+		newConn.SetRemote(s.listenConns[0].GetRemote())
+		newConn.SetStream(stream)
+		s.listenConns = append(s.listenConns, newConn)
+		return newConn, nil
+	}
+
+}
+
+func (s *QUICSocket) WaitForDialIn() (*snet.UDPAddr, error) {
 	bts := make([]byte, packets.PACKET_SIZE)
 	stream, err := s.listenConns[0].AcceptStream()
 	if err != nil {
@@ -78,7 +107,7 @@ func (s *QUICSocket) WaitForDialIn(wait bool) (*snet.UDPAddr, error) {
 	log.Debugf("Set connection ready")
 
 	// TODO: Rethink this
-	go func(listenConn *packets.QUICReliableConn) {
+	/*go func(listenConn *packets.QUICReliableConn) {
 		for {
 			log.Debugf("Accepting new Stream on listen socket")
 			stream, err := listenConn.AcceptStream()
@@ -94,28 +123,24 @@ func (s *QUICSocket) WaitForDialIn(wait bool) (*snet.UDPAddr, error) {
 
 			s.listenConns = append(s.listenConns, newConn)
 		}
-	}(s.listenConns[0])
+	}(s.listenConns[0])*/
 
-	if wait {
-		_, err = stream.Read(bts)
-		if err != nil {
-			return nil, err
-		}
-		p := DialPacketQuic{}
-		network := bytes.NewBuffer(bts) // Stand-in for a network connection
-		dec := gob.NewDecoder(network)
-		err = dec.Decode(&p)
-		if err != nil {
-			return nil, err
-		}
-
-		s.listenConns[0].SetPath(&p.Path)
-
-		addr := p.Addr
-		return &addr, nil
+	_, err = stream.Read(bts)
+	if err != nil {
+		return nil, err
+	}
+	p := DialPacketQuic{}
+	network := bytes.NewBuffer(bts) // Stand-in for a network connection
+	dec := gob.NewDecoder(network)
+	err = dec.Decode(&p)
+	if err != nil {
+		return nil, err
 	}
 
-	return nil, nil
+	s.listenConns[0].SetPath(&p.Path)
+
+	addr := p.Addr
+	return &addr, nil
 }
 
 func (s *QUICSocket) Dial(remote snet.UDPAddr, path snet.Path, options DialOptions) (packets.UDPConn, error) {
@@ -150,7 +175,7 @@ func (s *QUICSocket) Dial(remote snet.UDPAddr, path snet.Path, options DialOptio
 func (s *QUICSocket) DialAll(remote snet.UDPAddr, path []snet.Path, options DialOptions) ([]packets.UDPConn, error) {
 	// TODO: Rethink this
 
-	go func(listenConn *packets.QUICReliableConn) {
+	/*go func(listenConn *packets.QUICReliableConn) {
 
 		stream, err := listenConn.AcceptStream()
 		if err != nil {
@@ -178,7 +203,7 @@ func (s *QUICSocket) DialAll(remote snet.UDPAddr, path []snet.Path, options Dial
 
 			s.listenConns = append(s.listenConns, newConn)
 		}
-	}(s.listenConns[0])
+	}(s.listenConns[0])*/
 
 	conns := make([]packets.UDPConn, 1)
 	conns[0] = s.listenConns[0]
@@ -188,6 +213,13 @@ func (s *QUICSocket) DialAll(remote snet.UDPAddr, path []snet.Path, options Dial
 			return nil, err
 		}
 		conns = append(conns, conn)
+	}
+
+	select {
+	case s.listenConns[0].Ready <- true:
+		log.Debugf("Set Connection Ready")
+	default:
+		// s.listenConns[0]
 	}
 
 	return conns, nil
