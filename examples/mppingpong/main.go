@@ -178,7 +178,13 @@ func main() {
 			conns := <-mpSock.OnConnectionsChange
 			log.Infof("New Connections available, got %d", len(conns))
 			for i, v := range conns {
-				log.Infof("Connection %d is %s", i, packets.ConnTypeToString(v.GetType()))
+				var str string = ""
+				path := v.GetPath()
+				if path != nil {
+					str = PathToString(*path)
+				}
+
+				log.Infof("Connection %d is %s, path %s", i, packets.ConnTypeToString(v.GetType()), str)
 			}
 		}
 	}()
