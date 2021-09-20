@@ -6,12 +6,18 @@ import (
 
 	"github.com/netsys-lab/scion-path-discovery/packets"
 	"github.com/scionproto/scion/go/lib/snet"
+	"github.com/scionproto/scion/go/lib/snet/path"
 	log "github.com/sirupsen/logrus"
 )
 
 var _ packets.UDPConn = (*packets.QUICReliableConn)(nil)
 
 var _ UnderlaySocket = (*QUICSocket)(nil)
+
+type DialPacketQuic struct {
+	Addr snet.UDPAddr
+	Path snet.Path
+}
 
 // TODO: extend this further. It may be useful to use more than
 // one native UDP socket due to performance limitations
@@ -35,6 +41,8 @@ func NewQUICSocket(local string) *QUICSocket {
 		dialConns:     make([]*packets.QUICReliableConn, 0),
 		acceptedConns: make(chan []*packets.QUICReliableConn, 0),
 	}
+
+	gob.Register(path.Path{})
 
 	return &s
 }
@@ -93,13 +101,15 @@ func (s *QUICSocket) WaitForDialIn(wait bool) (*snet.UDPAddr, error) {
 		if err != nil {
 			return nil, err
 		}
-		p := DialPacket{}
+		p := DialPacketQuic{}
 		network := bytes.NewBuffer(bts) // Stand-in for a network connection
 		dec := gob.NewDecoder(network)
 		err = dec.Decode(&p)
 		if err != nil {
 			return nil, err
 		}
+
+		s.listenConns[0].SetPath(&p.Path)
 
 		addr := p.Addr
 		return &addr, nil
@@ -120,8 +130,9 @@ func (s *QUICSocket) Dial(remote snet.UDPAddr, path snet.Path, options DialOptio
 	if options.SendAddrPacket {
 		var network bytes.Buffer
 		enc := gob.NewEncoder(&network) // Will write to network.
-		p := DialPacket{
+		p := DialPacketQuic{
 			Addr: *s.localAddr,
+			Path: path,
 		}
 
 		err := enc.Encode(p)
@@ -137,8 +148,6 @@ func (s *QUICSocket) Dial(remote snet.UDPAddr, path snet.Path, options DialOptio
 }
 
 func (s *QUICSocket) DialAll(remote snet.UDPAddr, path []snet.Path, options DialOptions) ([]packets.UDPConn, error) {
-	conns := make([]packets.UDPConn, 0)
-
 	// TODO: Rethink this
 
 	go func(listenConn *packets.QUICReliableConn) {
@@ -148,6 +157,11 @@ func (s *QUICSocket) DialAll(remote snet.UDPAddr, path []snet.Path, options Dial
 			log.Fatalf("QUIC Accept err %s", err.Error())
 		}
 		s.listenConns[0].SetStream(stream)
+
+		select {
+		case s.listenConns[0].Ready <- true:
+		default:
+		}
 
 		for {
 			log.Debugf("Accepting new Stream on listen socket")
@@ -166,6 +180,8 @@ func (s *QUICSocket) DialAll(remote snet.UDPAddr, path []snet.Path, options Dial
 		}
 	}(s.listenConns[0])
 
+	conns := make([]packets.UDPConn, 1)
+	conns[0] = s.listenConns[0]
 	for _, v := range path {
 		conn, err := s.Dial(remote, v, options)
 		if err != nil {
@@ -180,6 +196,9 @@ func (s *QUICSocket) DialAll(remote snet.UDPAddr, path []snet.Path, options Dial
 func (s *QUICSocket) GetConnections() []packets.UDPConn {
 	conns := make([]packets.UDPConn, 0)
 	for _, v := range s.listenConns {
+		conns = append(conns, v)
+	}
+	for _, v := range s.dialConns {
 		conns = append(conns, v)
 	}
 	return conns
