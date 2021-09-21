@@ -63,6 +63,7 @@ type MPPeerSock struct {
 	TransportConstructor    packets.TransportConstructor
 	PathQualityDB           pathselection.PathQualityDatabase
 	SelectedPathSet         *pathselection.PathSet
+	Mode                    string
 }
 
 func NewMPPeerSock(local string, peer *snet.UDPAddr) *MPPeerSock {
@@ -76,6 +77,10 @@ func NewMPPeerSock(local string, peer *snet.UDPAddr) *MPPeerSock {
 		PathQualityDB:        pathselection.NewInMemoryPathQualityDatabase(),
 		OnConnectionsChange:  make(chan []packets.UDPConn),
 	}
+}
+
+func (mp *MPPeerSock) SetMode(mode string) {
+	mp.Mode = mode
 }
 
 func (mp *MPPeerSock) SetPeer(peer *snet.UDPAddr) {
@@ -106,13 +111,40 @@ func (mp *MPPeerSock) WaitForPeerConnect(pathSetWrapper pathselection.CustomPath
 
 	// Start selection process -> will update DB
 	mp.StartPathSelection(pathSetWrapper)
+	log.Infof("Done path selection")
 	// wait until first signal on channel
 	// selectedPathSet := <-mp.OnPathsetChange
 	// time.Sleep(1 * time.Second)
 	// dial all paths selected by user algorithm
-	err = mp.DialAll(mp.SelectedPathSet, &ConnectOptions{
-		SendAddrPacket: false,
-	})
+	if pathSetWrapper != nil {
+		err = mp.DialAll(mp.SelectedPathSet, &ConnectOptions{
+			SendAddrPacket: false,
+		})
+	} else {
+		go func() {
+			conns := mp.UnderlaySocket.GetConnections()
+			mp.PacketScheduler.SetConnections(conns)
+			mp.PathQualityDB.SetConnections(conns)
+			mp.connectionSetChange(conns)
+			for {
+				log.Debugf("Waiting for new connections...")
+				conn, err := mp.UnderlaySocket.WaitForIncomingConn()
+				if conn == nil && err == nil {
+					log.Debugf("Socket does not implement WaitForIncomingConn, stopping here...")
+					return
+				}
+				if err != nil {
+					log.Errorf("Failed to wait for incoming connection %s", err.Error())
+					return
+				}
+
+				conns := mp.UnderlaySocket.GetConnections()
+				mp.PacketScheduler.SetConnections(conns)
+				mp.PathQualityDB.SetConnections(conns)
+				mp.connectionSetChange(conns)
+			}
+		}()
+	}
 
 	return remote, err
 }
@@ -143,6 +175,10 @@ func (mp *MPPeerSock) StartPathSelection(pathSetWrapper pathselection.CustomPath
 	// And if this returns another pathset then currently active,
 	// one could invoke this event here...
 	// To connect over the new pathset, call mpSock.DialAll(pathset)
+
+	if pathSetWrapper == nil {
+		return
+	}
 
 	// TODO: 10 seconds
 	ticker := time.NewTicker(100 * time.Second)

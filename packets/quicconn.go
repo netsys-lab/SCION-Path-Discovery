@@ -44,7 +44,7 @@ func (qc *QUICReliableConn) Read(b []byte) (int, error) {
 		log.Warnf("Waiting to be ready")
 		<-qc.Ready
 	}
-	log.Warnf("Ready")
+	// log.Warnf("Ready")
 	n, err := qc.internalConn.Read(b)
 	if err != nil {
 		return n, err
@@ -93,12 +93,13 @@ func (qc *QUICReliableConn) Dial(addr snet.UDPAddr, path *snet.Path) error {
 	log.Debugf("Opened Stream to %s", addr.String())
 
 	qc.internalConn = stream
-
+	log.Debugf("Setting stream %p to conn %p", &qc.internalConn, qc)
 	return nil
 }
 
 // This simply wraps conn.Write and will later collect metrics
 func (qc *QUICReliableConn) Write(b []byte) (int, error) {
+	// log.Debugf("Writing on stream %p of conn %p", &qc.internalConn, qc)
 	n, err := qc.internalConn.Write(b)
 	qc.metrics.WrittenBytes += int64(n)
 	qc.metrics.WrittenPackets++
@@ -154,11 +155,15 @@ func (qc *QUICReliableConn) AcceptStream() (quic.Stream, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Debugf("Got session on quic %s", qc.listener.Addr())
 
 	stream, err := session.AcceptStream(context.Background())
+	log.Debugf("ASÖLKD on quic %s", qc.listener.Addr())
 	if err != nil {
 		return nil, err
 	}
+
+	log.Debugf("Accepted on quic %s", qc.listener.Addr())
 
 	// qc.internalConn = stream
 

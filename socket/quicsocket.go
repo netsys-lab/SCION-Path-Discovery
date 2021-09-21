@@ -62,12 +62,18 @@ func (s *QUICSocket) Listen() error {
 }
 
 func (s *QUICSocket) WaitForIncomingConn() (packets.UDPConn, error) {
+	log.Infof("Waiting for new connection")
 	stream, err := s.listenConns[0].AcceptStream()
 	if err != nil {
 		log.Fatalf("QUIC Accept err %s", err.Error())
 	}
 
 	log.Debugf("Accepted new Stream on listen socket")
+
+	bts := make([]byte, packets.PACKET_SIZE)
+	n, err := stream.Read(bts)
+
+	log.Warnf("Got %d bytes from new accepted stream", n)
 
 	if s.listenConns[0].GetInternalConn() == nil {
 		log.Warnf("Set stream to listen conn")
@@ -92,10 +98,12 @@ func (s *QUICSocket) WaitForIncomingConn() (packets.UDPConn, error) {
 
 func (s *QUICSocket) WaitForDialIn() (*snet.UDPAddr, error) {
 	bts := make([]byte, packets.PACKET_SIZE)
+	log.Debugf("Wait for Dial In")
 	stream, err := s.listenConns[0].AcceptStream()
 	if err != nil {
 		return nil, err
 	}
+	log.Debugf("Dialed In")
 
 	s.listenConns[0].SetStream(stream)
 
@@ -138,7 +146,7 @@ func (s *QUICSocket) WaitForDialIn() (*snet.UDPAddr, error) {
 	}
 
 	s.listenConns[0].SetPath(&p.Path)
-
+	log.Debugf("Got path from connection %v", p.Path)
 	addr := p.Addr
 	return &addr, nil
 }
@@ -152,6 +160,7 @@ func (s *QUICSocket) Dial(remote snet.UDPAddr, path snet.Path, options DialOptio
 		return nil, err
 	}
 
+	log.Warnf("Sending addr packet %d for conn %p", options.SendAddrPacket, &conn)
 	if options.SendAddrPacket {
 		var network bytes.Buffer
 		enc := gob.NewEncoder(&network) // Will write to network.
@@ -205,14 +214,24 @@ func (s *QUICSocket) DialAll(remote snet.UDPAddr, path []snet.Path, options Dial
 		}
 	}(s.listenConns[0])*/
 
-	conns := make([]packets.UDPConn, 1)
-	conns[0] = s.listenConns[0]
-	for _, v := range path {
-		conn, err := s.Dial(remote, v, options)
-		if err != nil {
-			return nil, err
+	// TODO: Differentiate between client/server based selection
+	conns := make([]packets.UDPConn, 0)
+	// conns[0] = s.listenConns[0]
+	for i, v := range path {
+		if i == 0 {
+			conn, err := s.Dial(remote, v, options)
+			if err != nil {
+				return nil, err
+			}
+			conns = append(conns, conn)
+		} else {
+			conn, err := s.Dial(remote, v, DialOptions{SendAddrPacket: true})
+			if err != nil {
+				return nil, err
+			}
+			conns = append(conns, conn)
 		}
-		conns = append(conns, conn)
+
 	}
 
 	select {

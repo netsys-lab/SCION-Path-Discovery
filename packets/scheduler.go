@@ -76,10 +76,10 @@ func (ws *SampleFirstPathScheduler) SetConnections(conns []UDPConn) {
 }*/
 
 func (ws *SampleFirstPathScheduler) Write(data []byte) (int, error) {
-	if len(ws.connections) < 2 {
+	if len(ws.connections) < 1 {
 		return 0, errors.New("No connection available to write")
 	}
-	return ws.connections[1].Write(data)
+	return ws.connections[0].Write(data)
 }
 func (ws *SampleFirstPathScheduler) Read(data []byte) (int, error) {
 	if len(ws.connections) < 1 {
@@ -90,10 +90,10 @@ func (ws *SampleFirstPathScheduler) Read(data []byte) (int, error) {
 	return ws.connections[0].Read(data)
 }
 func (ws *SampleFirstPathScheduler) WriteStream(data []byte) (int, error) {
-	if len(ws.connections) < 2 {
+	if len(ws.connections) < 1 {
 		return 0, errors.New("No connection available to writeStrean")
 	}
-	return ws.connections[1].WriteStream(data)
+	return ws.connections[0].WriteStream(data)
 }
 func (ws *SampleFirstPathScheduler) ReadStream(data []byte) (int, error) {
 	if len(ws.connections) < 1 {
