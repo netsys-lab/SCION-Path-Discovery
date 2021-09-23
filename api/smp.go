@@ -90,7 +90,7 @@ func NewMPPeerSock(local string, peer *snet.UDPAddr, options *MPSocketOptions) *
 	}
 
 	if options != nil {
-		sock.Options = defaultOptions
+		sock.Options = options
 	}
 
 	switch sock.Options.Transport {
