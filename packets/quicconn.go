@@ -5,11 +5,13 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"net"
+	"sync"
 
 	"github.com/lucas-clemente/quic-go"
 	"github.com/netsec-ethz/scion-apps/pkg/appnet"
 	"github.com/netsec-ethz/scion-apps/pkg/appnet/appquic"
 	"github.com/scionproto/scion/go/lib/snet"
+	"github.com/scionproto/scion/go/lib/spath"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -22,6 +24,65 @@ func QUICConnConstructor() UDPConn {
 
 func (qc *QUICReliableConn) GetType() int {
 	return ConnectionTypes.Bidirectional
+}
+
+type returnPath struct {
+	path    *spath.Path
+	nextHop *net.UDPAddr
+}
+
+type returnPathConn struct {
+	net.PacketConn
+	mutex sync.RWMutex
+	path  *returnPath
+}
+
+func Listen(listen *net.UDPAddr) (*returnPathConn, error) {
+	sconn, err := appnet.Listen(listen)
+	if err != nil {
+		return nil, err
+	}
+	return newReturnPathConn(sconn), nil
+}
+
+func newReturnPathConn(conn *snet.Conn) *returnPathConn {
+	return &returnPathConn{
+		PacketConn: conn,
+	}
+}
+
+func (c *returnPathConn) ReadFrom(p []byte) (int, net.Addr, error) {
+	n, addr, err := c.PacketConn.ReadFrom(p)
+	for _, ok := err.(*snet.OpError); err != nil && ok; {
+		n, addr, err = c.PacketConn.ReadFrom(p)
+	}
+	if err == nil {
+		if saddr, ok := addr.(*snet.UDPAddr); ok && c.path == nil {
+			log.Errorf("Setting return path")
+			c.mutex.Lock()
+			defer c.mutex.Unlock()
+			c.path = &returnPath{path: &saddr.Path, nextHop: saddr.NextHop}
+			// saddr.Path = nil // hide it,
+			saddr.NextHop = nil
+		}
+	}
+	return n, addr, err
+}
+
+func (c *returnPathConn) WriteTo(p []byte, addr net.Addr) (int, error) {
+	if saddr, ok := addr.(*snet.UDPAddr); ok && c.path != nil { // XXX && saddr.IA = localIA
+		c.mutex.RLock()
+		defer c.mutex.RUnlock()
+
+		retPath := c.path
+		addr = &snet.UDPAddr{
+			IA:      saddr.IA,
+			Host:    saddr.Host,
+			Path:    *retPath.path,
+			NextHop: retPath.nextHop,
+		}
+	}
+	return c.PacketConn.WriteTo(p, addr)
 }
 
 // TODO: Implement SCION/QUIC here
@@ -177,7 +238,7 @@ func (qc *QUICReliableConn) Listen(addr snet.UDPAddr) error {
 		Port: addr.Host.Port,
 	}
 	qc.local = &addr
-	sconn, err := appnet.Listen(&udpAddr)
+	sconn, err := Listen(&udpAddr) // appnet.Listen(&udpAddr)
 	if err != nil {
 		return err
 	}
