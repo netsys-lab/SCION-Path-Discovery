@@ -30,7 +30,7 @@ func main() {
 	flag.Parse()
 
 	lastSelection := LastSelection{}
-	mpSock := smp.NewMPPeerSock(*localAddr, nil)
+	mpSock := smp.NewMPPeerSock(*localAddr, nil, nil)
 	err := mpSock.Listen()
 	if err != nil {
 		log.Fatal("Failed to listen MPPeerSock", err)

@@ -217,21 +217,12 @@ func (s *QUICSocket) DialAll(remote snet.UDPAddr, path []snet.Path, options Dial
 	// TODO: Differentiate between client/server based selection
 	conns := make([]packets.UDPConn, 0)
 	// conns[0] = s.listenConns[0]
-	for i, v := range path {
-		if i == 0 {
-			conn, err := s.Dial(remote, v, options)
-			if err != nil {
-				return nil, err
-			}
-			conns = append(conns, conn)
-		} else {
-			conn, err := s.Dial(remote, v, DialOptions{SendAddrPacket: true})
-			if err != nil {
-				return nil, err
-			}
-			conns = append(conns, conn)
+	for _, v := range path {
+		conn, err := s.Dial(remote, v, options)
+		if err != nil {
+			return nil, err
 		}
-
+		conns = append(conns, conn)
 	}
 
 	select {

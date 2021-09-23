@@ -28,10 +28,10 @@ type SCIONSocket struct {
 	connections          []packets.UDPConn
 }
 
-func NewSCIONSocket(local string, transportConstructor packets.TransportConstructor) *SCIONSocket {
+func NewSCIONSocket(local string) *SCIONSocket {
 	s := SCIONSocket{
 		local:                local,
-		transportConstructor: transportConstructor,
+		transportConstructor: packets.SCIONTransportConstructor,
 		connections:          make([]packets.UDPConn, 0),
 	}
 

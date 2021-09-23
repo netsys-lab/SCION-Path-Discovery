@@ -155,7 +155,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to parse remote addr %s, err: %v", *remoteAddr, err)
 	}
-	mpSock := smp.NewMPPeerSock(*localAddr, peerAddr)
+	mpSock := smp.NewMPPeerSock(*localAddr, peerAddr, nil)
 	err = mpSock.Listen()
 	if err != nil {
 		log.Fatal("Failed to listen MPPeerSock", err)

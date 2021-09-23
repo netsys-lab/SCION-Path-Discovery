@@ -47,6 +47,16 @@ const (
 	CONN_HANDSHAKING = 3
 )
 
+type MPSocketOptions struct {
+	Transport                   string // "QUIC" | "SCION"
+	PathSelectionResponsibility string // "CLIENT" | "SERVER" | "BOTH"
+}
+
+var defaultOptions = &MPSocketOptions{
+	Transport:                   "SCION",
+	PathSelectionResponsibility: "BOTH",
+}
+
 // MPPeerSock This represents a multipath socket that can handle 1-n paths.
 // Each socket is bound to a specific peer
 // TODO: One socket that handles multiple peers? This could be done by a wrapper
@@ -64,19 +74,35 @@ type MPPeerSock struct {
 	PathQualityDB           pathselection.PathQualityDatabase
 	SelectedPathSet         *pathselection.PathSet
 	Mode                    string
+	Options                 *MPSocketOptions
 }
 
-func NewMPPeerSock(local string, peer *snet.UDPAddr) *MPPeerSock {
-	return &MPPeerSock{
-		Peer:                 peer,
-		Local:                local,
-		OnPathsetChange:      make(chan pathselection.PathSet),
-		TransportConstructor: packets.QUICConnConstructor,
-		UnderlaySocket:       socket.NewQUICSocket(local),
-		PacketScheduler:      &packets.SampleFirstPathScheduler{},
-		PathQualityDB:        pathselection.NewInMemoryPathQualityDatabase(),
-		OnConnectionsChange:  make(chan []packets.UDPConn),
+func NewMPPeerSock(local string, peer *snet.UDPAddr, options *MPSocketOptions) *MPPeerSock {
+
+	sock := &MPPeerSock{
+		Peer:                peer,
+		Local:               local,
+		OnPathsetChange:     make(chan pathselection.PathSet),
+		PacketScheduler:     &packets.SampleFirstPathScheduler{},
+		PathQualityDB:       pathselection.NewInMemoryPathQualityDatabase(),
+		OnConnectionsChange: make(chan []packets.UDPConn),
+		Options:             defaultOptions,
 	}
+
+	if options != nil {
+		sock.Options = defaultOptions
+	}
+
+	switch sock.Options.Transport {
+	case "SCION":
+		sock.UnderlaySocket = socket.NewSCIONSocket(local)
+		break
+	case "QUIC":
+		sock.UnderlaySocket = socket.NewQUICSocket(local)
+		break
+	}
+
+	return sock
 }
 
 func (mp *MPPeerSock) SetMode(mode string) {
