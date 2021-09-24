@@ -50,6 +50,7 @@ const (
 type MPSocketOptions struct {
 	Transport                   string // "QUIC" | "SCION"
 	PathSelectionResponsibility string // "CLIENT" | "SERVER" | "BOTH"
+	MultiportMode               bool
 }
 
 var defaultSocketOptions = &MPSocketOptions{
@@ -93,12 +94,16 @@ func NewMPPeerSock(local string, peer *snet.UDPAddr, options *MPSocketOptions) *
 		sock.Options = options
 	}
 
+	socketOptions := &socket.SockOptions{}
+	socketOptions.MultiportMode = options.MultiportMode
+	socketOptions.PathSelectionResponsibility = options.PathSelectionResponsibility
+
 	switch sock.Options.Transport {
 	case "SCION":
 		sock.UnderlaySocket = socket.NewSCIONSocket(local)
 		break
 	case "QUIC":
-		sock.UnderlaySocket = socket.NewQUICSocket(local, options.PathSelectionResponsibility)
+		sock.UnderlaySocket = socket.NewQUICSocket(local, socketOptions)
 		break
 	}
 
@@ -143,7 +148,7 @@ func (mp *MPPeerSock) WaitForPeerConnect(pathSetWrapper pathselection.CustomPath
 	// time.Sleep(1 * time.Second)
 	// dial all paths selected by user algorithm
 	if pathSetWrapper != nil {
-		err = mp.DialAll(mp.SelectedPathSet, &ConnectOptions{
+		err = mp.DialAll(mp.SelectedPathSet, &socket.ConnectOptions{
 			SendAddrPacket: false,
 		})
 	} else {
@@ -257,17 +262,12 @@ func (mp *MPPeerSock) Write(b []byte) (int, error) {
 	return mp.PacketScheduler.Write(b)
 }
 
-type ConnectOptions struct {
-	SendAddrPacket      bool
-	DontWaitForIncoming bool
-}
-
 // A first approach could be to open connections over all
 // Paths to later reduce time effort for switching paths
-func (mp *MPPeerSock) Connect(pathSetWrapper pathselection.CustomPathSelection, options *ConnectOptions) error {
+func (mp *MPPeerSock) Connect(pathSetWrapper pathselection.CustomPathSelection, options *socket.ConnectOptions) error {
 	mp.StartPathSelection(pathSetWrapper)
 	// TODO: Rethink default values here...
-	opts := &ConnectOptions{}
+	opts := &socket.ConnectOptions{}
 	if options == nil {
 		opts.SendAddrPacket = true
 	} else {
@@ -319,7 +319,7 @@ func (mp *MPPeerSock) Disconnect() []error {
 */
 // Could call dialPath for all paths. However, not the connections over included
 // should be idled or closed here
-func (mp *MPPeerSock) DialAll(pathAlternatives *pathselection.PathSet, options *ConnectOptions) error {
+func (mp *MPPeerSock) DialAll(pathAlternatives *pathselection.PathSet, options *socket.ConnectOptions) error {
 	opts := socket.DialOptions{}
 	if options != nil {
 		opts.SendAddrPacket = options.SendAddrPacket
@@ -404,7 +404,9 @@ func NewMPListener(local string, options *MPListenerOptions) *MPListener {
 		break
 	case "QUIC":
 		// No explicit path selection here, all done by later created MPPeerSocks
-		listener.socket = socket.NewQUICSocket(local, "CLIENT")
+		listener.socket = socket.NewQUICSocket(local, &socket.SockOptions{
+			PathSelectionResponsibility: "CLIENT",
+		})
 		break
 	}
 	return listener

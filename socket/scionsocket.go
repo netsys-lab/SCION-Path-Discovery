@@ -73,7 +73,7 @@ func (s *SCIONSocket) WaitForDialIn() (*snet.UDPAddr, error) {
 	return &addr, nil
 }
 
-func (s *SCIONSocket) Dial(remote snet.UDPAddr, path snet.Path, options DialOptions) (packets.UDPConn, error) {
+func (s *SCIONSocket) Dial(remote snet.UDPAddr, path snet.Path, options DialOptions, i int) (packets.UDPConn, error) {
 	// appnet.SetPath(&remote, path)
 	// fmt.Printf("Dialing to %s via %s\n", remote.String(), remote.Path)
 	conn := s.transportConstructor()
@@ -112,8 +112,8 @@ func (s *SCIONSocket) DialAll(remote snet.UDPAddr, path []snet.Path, options Dia
 	// There is always one listening connection
 	conns := make([]packets.UDPConn, 1)
 	conns[0] = s.connections[0]
-	for _, v := range path {
-		conn, err := s.Dial(remote, v, options)
+	for i, v := range path {
+		conn, err := s.Dial(remote, v, options, i)
 		if err != nil {
 			return nil, err
 		}
