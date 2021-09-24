@@ -16,7 +16,8 @@ var _ UnderlaySocket = (*QUICSocket)(nil)
 
 type DialPacketQuic struct {
 	Addr snet.UDPAddr
-	Path snet.Path
+	// Path snet.Path
+	NumPaths int
 }
 
 // TODO: extend this further. It may be useful to use more than
@@ -26,20 +27,22 @@ type DialPacketQuic struct {
 //}
 
 type QUICSocket struct {
-	listenConns          []*packets.QUICReliableConn
-	local                string
-	localAddr            *snet.UDPAddr
-	transportConstructor packets.TransportConstructor
-	dialConns            []*packets.QUICReliableConn
-	acceptedConns        chan []*packets.QUICReliableConn
+	listenConns                 []*packets.QUICReliableConn
+	local                       string
+	localAddr                   *snet.UDPAddr
+	transportConstructor        packets.TransportConstructor
+	dialConns                   []*packets.QUICReliableConn
+	acceptedConns               chan []*packets.QUICReliableConn
+	pathSelectionResponsibility string
 }
 
-func NewQUICSocket(local string) *QUICSocket {
+func NewQUICSocket(local string, pathSelectionResponsibility string) *QUICSocket {
 	s := QUICSocket{
-		local:         local,
-		listenConns:   make([]*packets.QUICReliableConn, 0),
-		dialConns:     make([]*packets.QUICReliableConn, 0),
-		acceptedConns: make(chan []*packets.QUICReliableConn, 0),
+		local:                       local,
+		listenConns:                 make([]*packets.QUICReliableConn, 0),
+		dialConns:                   make([]*packets.QUICReliableConn, 0),
+		acceptedConns:               make(chan []*packets.QUICReliableConn, 0),
+		pathSelectionResponsibility: pathSelectionResponsibility,
 	}
 
 	gob.Register(path.Path{})
@@ -91,6 +94,7 @@ func (s *QUICSocket) WaitForIncomingConn() (packets.UDPConn, error) {
 		newConn.SetRemote(s.listenConns[0].GetRemote())
 		newConn.SetStream(stream)
 		s.listenConns = append(s.listenConns, newConn)
+		log.Warnf("RETURNING")
 		return newConn, nil
 	}
 
@@ -145,8 +149,20 @@ func (s *QUICSocket) WaitForDialIn() (*snet.UDPAddr, error) {
 		return nil, err
 	}
 
-	s.listenConns[0].SetPath(&p.Path)
-	log.Debugf("Got path from connection %v", p.Path)
+	log.Debugf("Waiting for %d more connections", p.NumPaths-1)
+
+	for i := 1; i < p.NumPaths; i++ {
+		log.Warnf("Got into loop for %d and %d", i, p.NumPaths)
+		_, err := s.WaitForIncomingConn()
+		log.Warnf("Having incoming conn")
+		if err != nil {
+			return nil, err
+		}
+		log.Debugf("Dialed In %d of %d", i, p.NumPaths)
+	}
+
+	// s.listenConns[0].SetPath(&p.Path)
+	// log.Debugf("Got path from connection %v", p.Path)
 	addr := p.Addr
 	return &addr, nil
 }
@@ -165,8 +181,8 @@ func (s *QUICSocket) Dial(remote snet.UDPAddr, path snet.Path, options DialOptio
 		var network bytes.Buffer
 		enc := gob.NewEncoder(&network) // Will write to network.
 		p := DialPacketQuic{
-			Addr: *s.localAddr,
-			Path: path,
+			Addr:     *s.localAddr,
+			NumPaths: options.NumPaths,
 		}
 
 		err := enc.Encode(p)
@@ -213,6 +229,10 @@ func (s *QUICSocket) DialAll(remote snet.UDPAddr, path []snet.Path, options Dial
 			s.listenConns = append(s.listenConns, newConn)
 		}
 	}(s.listenConns[0])*/
+
+	if options.NumPaths == 0 && len(path) > 0 {
+		options.NumPaths = len(path)
+	}
 
 	// TODO: Differentiate between client/server based selection
 	conns := make([]packets.UDPConn, 0)

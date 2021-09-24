@@ -52,7 +52,7 @@ type MPSocketOptions struct {
 	PathSelectionResponsibility string // "CLIENT" | "SERVER" | "BOTH"
 }
 
-var defaultOptions = &MPSocketOptions{
+var defaultSocketOptions = &MPSocketOptions{
 	Transport:                   "SCION",
 	PathSelectionResponsibility: "BOTH",
 }
@@ -86,7 +86,7 @@ func NewMPPeerSock(local string, peer *snet.UDPAddr, options *MPSocketOptions) *
 		PacketScheduler:     &packets.SampleFirstPathScheduler{},
 		PathQualityDB:       pathselection.NewInMemoryPathQualityDatabase(),
 		OnConnectionsChange: make(chan []packets.UDPConn),
-		Options:             defaultOptions,
+		Options:             defaultSocketOptions,
 	}
 
 	if options != nil {
@@ -98,7 +98,7 @@ func NewMPPeerSock(local string, peer *snet.UDPAddr, options *MPSocketOptions) *
 		sock.UnderlaySocket = socket.NewSCIONSocket(local)
 		break
 	case "QUIC":
-		sock.UnderlaySocket = socket.NewQUICSocket(local)
+		sock.UnderlaySocket = socket.NewQUICSocket(local, options.PathSelectionResponsibility)
 		break
 	}
 
@@ -258,7 +258,8 @@ func (mp *MPPeerSock) Write(b []byte) (int, error) {
 }
 
 type ConnectOptions struct {
-	SendAddrPacket bool
+	SendAddrPacket      bool
+	DontWaitForIncoming bool
 }
 
 // A first approach could be to open connections over all
@@ -330,25 +331,27 @@ func (mp *MPPeerSock) DialAll(pathAlternatives *pathselection.PathSet, options *
 
 	log.Debugf("Dialed all to %s, got %d connections", mp.Peer.String(), len(conns))
 
-	go func() {
-		for {
-			log.Debugf("Waiting for new connections...")
-			conn, err := mp.UnderlaySocket.WaitForIncomingConn()
-			if conn == nil && err == nil {
-				log.Debugf("Socket does not implement WaitForIncomingConn, stopping here...")
-				return
-			}
-			if err != nil {
-				log.Errorf("Failed to wait for incoming connection %s", err.Error())
-				return
-			}
+	if options == nil || !options.DontWaitForIncoming {
+		go func() {
+			for {
+				log.Debugf("Waiting for new connections...")
+				conn, err := mp.UnderlaySocket.WaitForIncomingConn()
+				if conn == nil && err == nil {
+					log.Debugf("Socket does not implement WaitForIncomingConn, stopping here...")
+					return
+				}
+				if err != nil {
+					log.Errorf("Failed to wait for incoming connection %s", err.Error())
+					return
+				}
 
-			conns = mp.UnderlaySocket.GetConnections()
-			mp.PacketScheduler.SetConnections(conns)
-			mp.PathQualityDB.SetConnections(conns)
-			mp.connectionSetChange(conns)
-		}
-	}()
+				conns = mp.UnderlaySocket.GetConnections()
+				mp.PacketScheduler.SetConnections(conns)
+				mp.PathQualityDB.SetConnections(conns)
+				mp.connectionSetChange(conns)
+			}
+		}()
+	}
 
 	mp.PacketScheduler.SetConnections(conns)
 	mp.PathQualityDB.SetConnections(conns)
@@ -370,4 +373,47 @@ func (mp *MPPeerSock) ReadStream(b []byte) (int, error) {
 // Here the socket could decide over which path to write
 func (mp *MPPeerSock) WriteStream(b []byte) (int, error) {
 	return mp.PacketScheduler.WriteStream(b)
+}
+
+type MPListenerOptions struct {
+	Transport string // "QUIC" | "SCION"
+}
+
+var defaultListenerOptions = &MPListenerOptions{
+	Transport: "SCION",
+}
+
+type MPListener struct {
+	local   string
+	socket  socket.UnderlaySocket
+	options *MPListenerOptions
+}
+
+func NewMPListener(local string, options *MPListenerOptions) *MPListener {
+	listener := &MPListener{
+		options: defaultListenerOptions,
+		local:   local,
+	}
+	if options != nil {
+		listener.options = options
+	}
+
+	switch listener.options.Transport {
+	case "SCION":
+		listener.socket = socket.NewSCIONSocket(local)
+		break
+	case "QUIC":
+		// No explicit path selection here, all done by later created MPPeerSocks
+		listener.socket = socket.NewQUICSocket(local, "CLIENT")
+		break
+	}
+	return listener
+}
+
+func (l *MPListener) Listen() error {
+	return l.socket.Listen()
+}
+
+func (l *MPListener) WaitForMPPeerSockConnect() (*snet.UDPAddr, error) {
+	return l.socket.WaitForDialIn()
 }

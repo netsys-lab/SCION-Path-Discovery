@@ -7,6 +7,7 @@ import (
 
 type DialOptions struct {
 	SendAddrPacket bool
+	NumPaths       int
 }
 
 type UnderlaySocket interface {

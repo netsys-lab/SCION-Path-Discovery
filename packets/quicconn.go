@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/lucas-clemente/quic-go"
 	"github.com/netsec-ethz/scion-apps/pkg/appnet"
@@ -87,6 +88,7 @@ func (c *returnPathConn) WriteTo(p []byte, addr net.Addr) (int, error) {
 
 // TODO: Implement SCION/QUIC here
 type QUICReliableConn struct { // Former: MonitoredConn
+	BasicConn
 	internalConn quic.Stream
 	listener     quic.Listener
 	session      quic.Session
@@ -97,6 +99,7 @@ type QUICReliableConn struct { // Former: MonitoredConn
 	metrics      PathMetrics
 	local        *snet.UDPAddr
 	Ready        chan bool
+	closed       bool
 }
 
 // This simply wraps conn.Read and will later collect metrics
@@ -116,6 +119,7 @@ func (qc *QUICReliableConn) Read(b []byte) (int, error) {
 }
 
 func (qc *QUICReliableConn) Dial(addr snet.UDPAddr, path *snet.Path) error {
+	qc.state = ConnectionStates.Pending
 	sconn, err := appnet.Listen(nil)
 	if err != nil {
 		return err
@@ -152,7 +156,7 @@ func (qc *QUICReliableConn) Dial(addr snet.UDPAddr, path *snet.Path) error {
 	}
 
 	log.Debugf("Opened Stream to %s", addr.String())
-
+	qc.state = ConnectionStates.Open
 	qc.internalConn = stream
 	log.Debugf("Setting stream %p to conn %p", &qc.internalConn, qc)
 	return nil
@@ -207,6 +211,7 @@ func (qc *QUICReliableConn) ReadStream(b []byte) (int, error) {
 }
 
 func (qc *QUICReliableConn) Close() error {
+	qc.state = ConnectionStates.Closed
 	return qc.internalConn.Close()
 }
 
@@ -256,7 +261,7 @@ func (qc *QUICReliableConn) Listen(addr snet.UDPAddr) error {
 	}
 
 	qc.listener = listener
-
+	qc.state = ConnectionStates.Pending
 	return nil
 }
 
@@ -287,4 +292,26 @@ func (qc *QUICReliableConn) SetLocal(local snet.UDPAddr) {
 
 func (qc *QUICReliableConn) SetStream(stream quic.Stream) {
 	qc.internalConn = stream
+	qc.state = ConnectionStates.Open
+}
+
+func (qc *QUICReliableConn) LocalAddr() net.Addr {
+	return qc.local
+}
+
+// RemoteAddr returns the remote network address.
+func (qc *QUICReliableConn) RemoteAddr() net.Addr {
+	return qc.remote
+}
+
+func (qc *QUICReliableConn) SetDeadline(t time.Time) error {
+	return qc.internalConn.SetDeadline(t)
+}
+
+func (qc *QUICReliableConn) SetReadDeadline(t time.Time) error {
+	return qc.internalConn.SetReadDeadline(t)
+}
+
+func (qc *QUICReliableConn) SetWriteDeadline(t time.Time) error {
+	return qc.internalConn.SetWriteDeadline(t)
 }
