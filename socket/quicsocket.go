@@ -78,10 +78,10 @@ func (s *QUICSocket) WaitForIncomingConn() (packets.UDPConn, error) {
 		bts := make([]byte, packets.PACKET_SIZE)
 		n, err := stream.Read(bts)
 
-		log.Warnf("Got %d bytes from new accepted stream", n)
+		log.Debugf("Got %d bytes from new accepted stream", n)
 
 		if s.listenConns[0].GetInternalConn() == nil {
-			log.Warnf("Set stream to listen conn")
+			log.Debugf("Set stream to listen conn")
 			s.listenConns[0].SetStream(stream)
 			select {
 			case s.listenConns[0].Ready <- true:
@@ -101,8 +101,6 @@ func (s *QUICSocket) WaitForIncomingConn() (packets.UDPConn, error) {
 			if err != nil {
 				return nil, err
 			}
-
-			log.Warnf("RETURNING")
 			return newConn, nil
 		}
 	} else {
@@ -182,9 +180,9 @@ func (s *QUICSocket) WaitForDialIn() (*snet.UDPAddr, error) {
 	log.Debugf("Waiting for %d more connections", p.NumPaths-1)
 
 	for i := 1; i < p.NumPaths; i++ {
-		log.Warnf("Got into loop for %d and %d", i, p.NumPaths)
+		log.Debugf("Got into loop for %d and %d", i, p.NumPaths)
 		_, err := s.WaitForIncomingConn()
-		log.Warnf("Having incoming conn")
+		log.Debugf("Having incoming conn")
 		if err != nil {
 			return nil, err
 		}
@@ -207,7 +205,7 @@ func (s *QUICSocket) Dial(remote snet.UDPAddr, path snet.Path, options DialOptio
 			return nil, err
 		}
 
-		log.Warnf("Sending addr packet %d for conn %p", options.SendAddrPacket, &conn)
+		log.Debugf("Sending addr packet %d for conn %p", options.SendAddrPacket, &conn)
 		if options.SendAddrPacket {
 			var network bytes.Buffer
 			enc := gob.NewEncoder(&network) // Will write to network.
@@ -231,13 +229,13 @@ func (s *QUICSocket) Dial(remote snet.UDPAddr, path snet.Path, options DialOptio
 		conn.SetLocal(*s.localAddr)
 		rem := remote.Copy()
 		rem.Host.Port = remote.Host.Port + i
-		log.Warnf("Remote port is %d", rem.Host.Port)
+		log.Debugf("Remote port is %d", rem.Host.Port)
 		err := conn.Dial(*rem, &path)
 		if err != nil {
 			return nil, err
 		}
 
-		log.Warnf("Sending addr packet %d for conn %p", options.SendAddrPacket, &conn)
+		log.Debugf("Sending addr packet %d for conn %p", options.SendAddrPacket, &conn)
 		if options.SendAddrPacket {
 			var network bytes.Buffer
 			enc := gob.NewEncoder(&network) // Will write to network.

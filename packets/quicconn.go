@@ -59,7 +59,7 @@ func (c *returnPathConn) ReadFrom(p []byte) (int, net.Addr, error) {
 	}
 	if err == nil {
 		if saddr, ok := addr.(*snet.UDPAddr); ok && c.path == nil {
-			log.Errorf("Setting return path")
+			log.Debugf("Setting return path")
 			c.mutex.Lock()
 			defer c.mutex.Unlock()
 			c.path = &returnPath{path: &saddr.Path, nextHop: saddr.NextHop}
@@ -105,7 +105,6 @@ type QUICReliableConn struct { // Former: MonitoredConn
 // This simply wraps conn.Read and will later collect metrics
 func (qc *QUICReliableConn) Read(b []byte) (int, error) {
 	if qc.internalConn == nil {
-		log.Warnf("Waiting to be ready")
 		<-qc.Ready
 	}
 	// log.Warnf("Ready")
