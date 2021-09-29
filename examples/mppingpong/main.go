@@ -150,8 +150,12 @@ func main() {
 	gob.Register(PathPacket{})
 	lastSelection := LastSelection{}
 
-	mpSock := smp.NewMPPeerSock(*localAddr, nil)
-	err := mpSock.Listen()
+	peerAddr, err := snet.ParseUDPAddr(*remoteAddr)
+	if err != nil {
+		log.Fatalf("Failed to parse remote addr %s, err: %v", *remoteAddr, err)
+	}
+	mpSock := smp.NewMPPeerSock(*localAddr, peerAddr)
+	err = mpSock.Listen()
 	if err != nil {
 		log.Fatal("Failed to listen MPPeerSock", err)
 	}
@@ -169,11 +173,6 @@ func main() {
 
 	log.Infof("Listening on %s", *localAddr)
 
-	peerAddr, err := snet.ParseUDPAddr(*remoteAddr)
-	if err != nil {
-		log.Fatalf("Failed to parse remote addr %s, err: %v", *remoteAddr, err)
-	}
-	mpSock.SetPeer(peerAddr)
 	err = mpSock.Connect(&lastSelection, nil)
 	log.Infof("Connected to %s", *remoteAddr)
 	if err != nil {
