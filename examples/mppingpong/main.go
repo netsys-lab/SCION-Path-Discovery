@@ -25,13 +25,12 @@ type LastSelection struct {
 
 //CustomPathSelectAlg this is where the user actually wants to implement its logic in
 func (lastSel *LastSelection) CustomPathSelectAlg(pathSet *pathselection.PathSet) (*pathselection.PathSet, error) {
-	return pathSet.GetPathHighBandwidth(*numConns), nil
+	return pathSet.GetPathSmallHopCount(*numConns), nil
 }
 
 var numConns *int = flag.Int("n", 1, "Max number of outgoing connections")
 var localAddr *string = flag.String("l", "localhost:9999", "Set the local address")
 var remoteAddr *string = flag.String("r", "localhost:80", "Set the remote address")
-var isServer *bool = flag.Bool("s", false, "Run as Server (otherwise, client)")
 var loglevel *string = flag.String("loglevel", "INFO", "TRACE|DEBUG|INFO|WARN|ERROR|FATAL")
 
 func setLoging() {
@@ -170,34 +169,21 @@ func main() {
 
 	log.Infof("Listening on %s", *localAddr)
 
-	if *isServer {
-		remote, err := mpSock.WaitForPeerConnect(&lastSelection)
-		if err != nil {
-			log.Fatal("Failed to connect in-dialing peer", err)
-		}
-		log.Infof("Connected to %s", remote.String())
-
-		sendPackets(mpSock)
-		receivePackets(mpSock)
-	} else {
-		peerAddr, err := snet.ParseUDPAddr(*remoteAddr)
-		if err != nil {
-			log.Fatalf("Failed to parse remote addr %s, err: %v", *remoteAddr, err)
-		}
-		mpSock.SetPeer(peerAddr)
-		err = mpSock.Connect(&lastSelection, nil)
-		log.Infof("Connected to %s", *remoteAddr)
-		if err != nil {
-			log.Fatal("Failed to connect MPPeerSock", err)
-		}
-
-		sendPackets(mpSock)
-		receivePackets(mpSock)
+	peerAddr, err := snet.ParseUDPAddr(*remoteAddr)
+	if err != nil {
+		log.Fatalf("Failed to parse remote addr %s, err: %v", *remoteAddr, err)
+	}
+	mpSock.SetPeer(peerAddr)
+	err = mpSock.Connect(&lastSelection, nil)
+	log.Infof("Connected to %s", *remoteAddr)
+	if err != nil {
+		log.Fatal("Failed to connect MPPeerSock", err)
 	}
 
-	select {}
+	sendPackets(mpSock)
+	receivePackets(mpSock)
 
-	// mpSock.SetPeer(remote)
-	// mpSock.Connect(customPathSelectAlg)
-	//defer mpSock.Disconnect()
+	defer mpSock.Disconnect()
+
+	select {}
 }
