@@ -35,6 +35,7 @@ type SCIONConn struct { // Former: MonitoredConn
 	remote       *snet.UDPAddr
 	local        *net.UDPAddr
 	connType     int
+	id           string
 }
 
 // This simply wraps conn.Read and will later collect metrics
@@ -160,4 +161,12 @@ func (sc *SCIONConn) SetReadDeadline(t time.Time) error {
 
 func (sc *SCIONConn) SetWriteDeadline(t time.Time) error {
 	return sc.internalConn.SetWriteDeadline(t)
+}
+
+func (qc *SCIONConn) GetId() string {
+	return qc.id
+}
+
+func (qc *SCIONConn) SetId(id string) {
+	qc.id = id
 }

@@ -3,9 +3,9 @@ package socket
 import (
 	"bytes"
 	"encoding/gob"
-	"time"
 
 	"github.com/netsys-lab/scion-path-discovery/packets"
+	"github.com/netsys-lab/scion-path-discovery/pathselection"
 	"github.com/scionproto/scion/go/lib/snet"
 	"github.com/scionproto/scion/go/lib/snet/path"
 	log "github.com/sirupsen/logrus"
@@ -257,7 +257,7 @@ func (s *QUICSocket) Dial(remote snet.UDPAddr, path snet.Path, options DialOptio
 	}
 }
 
-func (s *QUICSocket) DialAll(remote snet.UDPAddr, path []snet.Path, options DialOptions) ([]packets.UDPConn, error) {
+func (s *QUICSocket) DialAll(remote snet.UDPAddr, path []pathselection.PathQuality, options DialOptions) ([]packets.UDPConn, error) {
 	// TODO: Rethink this
 
 	/*go func(listenConn *packets.QUICReliableConn) {
@@ -298,12 +298,29 @@ func (s *QUICSocket) DialAll(remote snet.UDPAddr, path []snet.Path, options Dial
 	conns := make([]packets.UDPConn, 0)
 	// conns[0] = s.listenConns[0]
 	for i, v := range path {
-		conn, err := s.Dial(remote, v, options, i)
+		// TODO: Check if conn over path is already open
+		connOpen := false
+		var openConn packets.UDPConn
+		for _, c := range s.dialConns {
+			if c.GetId() == v.Id {
+				connOpen = true
+				openConn = c
+				break
+			}
+		}
+		if connOpen {
+			log.Infof("Connection over path id %s already open, skipping", v.Id)
+			conns = append(conns, openConn)
+			continue
+		}
+		conn, err := s.Dial(remote, v.Path, options, i)
 		if err != nil {
 			return nil, err
 		}
+		conn.SetId(v.Id)
 		conns = append(conns, conn)
-		time.Sleep(1 * time.Second)
+		// TODO: Last maybe not working sleep
+		// time.Sleep(1 * time.Second)
 	}
 
 	select {

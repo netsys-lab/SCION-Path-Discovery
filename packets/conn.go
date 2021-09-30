@@ -70,7 +70,6 @@ type UDPConn interface {
 	net.Conn
 	Listen(snet.UDPAddr) error
 	Dial(snet.UDPAddr, *snet.Path) error
-	Close() error
 	GetState() int
 	GetMetrics() *PathMetrics
 	GetPath() *snet.Path
@@ -79,6 +78,8 @@ type UDPConn interface {
 	WriteStream([]byte) (int, error)
 	ReadStream([]byte) (int, error)
 	GetType() int
+	GetId() string
+	SetId(string)
 }
 
 type TransportConstructor func() UDPConn

@@ -3,6 +3,7 @@ package pathselection
 import (
 	"bytes"
 	"context"
+	"crypto/sha1"
 	"crypto/sha256"
 	"errors"
 	"fmt"
@@ -36,6 +37,7 @@ type PathQuality struct {
 	Bytes     int
 	Duration  time.Duration
 	Path      snet.Path
+	Id        string
 }
 
 type SelecteablePathSet interface {
@@ -190,7 +192,12 @@ func (db *InMemoryPathQualityDatabase) UpdatePathQualities(addr *snet.UDPAddr) e
 	}
 	var pathQualities []PathQuality
 	for _, path := range paths {
-		pathEntry := PathQuality{Path: path}
+		// TODO: Add local addr in hashing to support multiple conns over the same path
+		h := sha1.New()
+		h.Write(path.Path().Raw)
+		bs := h.Sum(nil)
+		id := fmt.Sprintf("%x", bs)
+		pathEntry := PathQuality{Path: path, Id: id}
 		pathQualities = append(pathQualities, pathEntry)
 	}
 	tmpPathSet := PathSet{Address: *addr, Paths: pathQualities}

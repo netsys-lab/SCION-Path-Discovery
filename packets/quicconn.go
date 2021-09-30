@@ -100,6 +100,7 @@ type QUICReliableConn struct { // Former: MonitoredConn
 	local        *snet.UDPAddr
 	Ready        chan bool
 	closed       bool
+	id           string
 }
 
 // This simply wraps conn.Read and will later collect metrics
@@ -253,11 +254,11 @@ func (qc *QUICReliableConn) Listen(addr snet.UDPAddr) error {
 		KeepAlive: true,
 	})
 
-	log.Debugf("Listen on quic %s wtih scion %s", listener.Addr(), sconn.LocalAddr())
-
 	if err != nil {
 		return err
 	}
+
+	log.Debugf("Listen on quic %s wtih scion %s", listener.Addr(), sconn.LocalAddr())
 
 	qc.listener = listener
 	qc.state = ConnectionStates.Pending
@@ -298,7 +299,6 @@ func (qc *QUICReliableConn) LocalAddr() net.Addr {
 	return qc.local
 }
 
-// RemoteAddr returns the remote network address.
 func (qc *QUICReliableConn) RemoteAddr() net.Addr {
 	return qc.remote
 }
@@ -313,4 +313,12 @@ func (qc *QUICReliableConn) SetReadDeadline(t time.Time) error {
 
 func (qc *QUICReliableConn) SetWriteDeadline(t time.Time) error {
 	return qc.internalConn.SetWriteDeadline(t)
+}
+
+func (qc *QUICReliableConn) GetId() string {
+	return qc.id
+}
+
+func (qc *QUICReliableConn) SetId(id string) {
+	qc.id = id
 }

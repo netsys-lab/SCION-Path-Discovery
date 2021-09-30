@@ -212,7 +212,7 @@ func (mp *MPPeerSock) StartPathSelection(pathSetWrapper pathselection.CustomPath
 	}
 
 	// TODO: 10 seconds
-	ticker := time.NewTicker(100 * time.Second)
+	ticker := time.NewTicker(10 * time.Second)
 
 	go func() {
 		for range ticker.C {
@@ -324,7 +324,7 @@ func (mp *MPPeerSock) DialAll(pathAlternatives *pathselection.PathSet, options *
 	if options != nil {
 		opts.SendAddrPacket = options.SendAddrPacket
 	}
-	conns, err := mp.UnderlaySocket.DialAll(*mp.Peer, pathselection.UnwrapPathset(*pathAlternatives), opts)
+	conns, err := mp.UnderlaySocket.DialAll(*mp.Peer, pathAlternatives.Paths, opts)
 	if err != nil {
 		return err
 	}
