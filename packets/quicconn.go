@@ -229,7 +229,7 @@ func (qc *QUICReliableConn) AcceptStream() (quic.Stream, error) {
 		return nil, err
 	}
 
-	log.Debugf("Accepted on quic %s", qc.listener.Addr())
+	log.Debugf("Accepted on quic %s with %p", qc.listener.Addr(), qc)
 
 	// qc.internalConn = stream
 

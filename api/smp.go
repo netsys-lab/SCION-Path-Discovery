@@ -141,7 +141,7 @@ func (mp *MPPeerSock) WaitForPeerConnect(pathSetWrapper pathselection.CustomPath
 	mp.Peer = remote
 
 	// Start selection process -> will update DB
-	mp.StartPathSelection(pathSetWrapper)
+	mp.StartPathSelection(pathSetWrapper, pathSetWrapper == nil)
 	log.Infof("Done path selection")
 	// wait until first signal on channel
 	// selectedPathSet := <-mp.OnPathsetChange
@@ -194,7 +194,7 @@ func (mp *MPPeerSock) WaitForPeerConnectBack() (*snet.UDPAddr, error) {
 }
 */
 
-func (mp *MPPeerSock) StartPathSelection(pathSetWrapper pathselection.CustomPathSelection) {
+func (mp *MPPeerSock) StartPathSelection(pathSetWrapper pathselection.CustomPathSelection, noPeriodicPathSelection bool) {
 	// DONE!
 	// TODO: Nico/Karola: Implement metrics collection and path alg invocation
 	// We could put a timer here.
@@ -212,17 +212,22 @@ func (mp *MPPeerSock) StartPathSelection(pathSetWrapper pathselection.CustomPath
 	}
 
 	// TODO: 10 seconds
-	ticker := time.NewTicker(10 * time.Second)
 
-	go func() {
-		for range ticker.C {
-			if mp.Peer != nil {
-				mp.pathSelection(pathSetWrapper)
-				mp.DialAll(mp.SelectedPathSet, nil)
+	if !noPeriodicPathSelection {
+		ticker := time.NewTicker(5 * time.Second)
+		go func() {
+			for range ticker.C {
+				if mp.Peer != nil {
+					mp.pathSelection(pathSetWrapper)
+					mp.DialAll(mp.SelectedPathSet, &socket.ConnectOptions{
+						SendAddrPacket:      true,
+						DontWaitForIncoming: true,
+					})
+				}
+
 			}
-
-		}
-	}()
+		}()
+	}
 
 	mp.pathSelection(pathSetWrapper)
 
@@ -265,7 +270,6 @@ func (mp *MPPeerSock) Write(b []byte) (int, error) {
 // A first approach could be to open connections over all
 // Paths to later reduce time effort for switching paths
 func (mp *MPPeerSock) Connect(pathSetWrapper pathselection.CustomPathSelection, options *socket.ConnectOptions) error {
-	mp.StartPathSelection(pathSetWrapper)
 	// TODO: Rethink default values here...
 	opts := &socket.ConnectOptions{}
 	if options == nil {
@@ -274,7 +278,7 @@ func (mp *MPPeerSock) Connect(pathSetWrapper pathselection.CustomPathSelection, 
 		opts = options
 	}
 	var err error
-
+	mp.StartPathSelection(pathSetWrapper, options.NoPeriodicPathSelection)
 	/*selectedPathSet, err := mp.PathQualityDB.GetPathSet(mp.Peer)
 	if err != nil {
 		return err

@@ -3,6 +3,7 @@ package socket
 import (
 	"bytes"
 	"encoding/gob"
+	"math/rand"
 
 	"github.com/netsys-lab/scion-path-discovery/packets"
 	"github.com/netsys-lab/scion-path-discovery/pathselection"
@@ -26,6 +27,16 @@ type DialPacketQuic struct {
 //type Socket interface {
 //	net.Conn
 //}
+
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+func RandStringBytes(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return string(b)
+}
 
 type QUICSocket struct {
 	listenConns          []*packets.QUICReliableConn
@@ -92,6 +103,8 @@ func (s *QUICSocket) WaitForIncomingConn() (packets.UDPConn, error) {
 			return s.listenConns[0], nil
 		} else {
 			newConn := &packets.QUICReliableConn{}
+			id := RandStringBytes(32)
+			newConn.SetId(id)
 			newConn.SetLocal(*s.localAddr)
 			newConn.SetRemote(s.listenConns[0].GetRemote())
 			newConn.SetStream(stream)
@@ -116,6 +129,9 @@ func (s *QUICSocket) WaitForIncomingConn() (packets.UDPConn, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		id := RandStringBytes(32)
+		conn.SetId(id)
 
 		conn.SetStream(stream)
 		s.listenConns = append(s.listenConns, conn)

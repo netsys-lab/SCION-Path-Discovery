@@ -7,8 +7,9 @@ import (
 )
 
 type ConnectOptions struct {
-	SendAddrPacket      bool
-	DontWaitForIncoming bool
+	SendAddrPacket          bool
+	DontWaitForIncoming     bool
+	NoPeriodicPathSelection bool
 }
 
 type SockOptions struct {
