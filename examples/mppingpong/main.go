@@ -162,6 +162,17 @@ func main() {
 
 	go func() {
 		for {
+			log.Info("Waiting for new paths")
+			paths := <- mpSock.OnPathsetChange
+			log.Infof("New Paths available, got %d", len(paths.Paths))
+			for i, path := range paths.Paths {
+				log.Infof("Path %d: %s", i, PathToString(path.Path))
+			}
+		}
+	}()
+
+	go func() {
+		for {
 			log.Info("Waiting for new connections")
 			conns := <- mpSock.OnConnectionsChange
 			log.Infof("New Connections available, got %d", len(conns))
