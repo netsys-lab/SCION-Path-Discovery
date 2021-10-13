@@ -1,6 +1,6 @@
 module github.com/netsys-lab/scion-path-discovery
 
-go 1.15
+go 1.16
 
 require (
 	github.com/johannwagner/scion-optimized-connection v0.3.0
