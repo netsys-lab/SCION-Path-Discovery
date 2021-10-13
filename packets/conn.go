@@ -1,6 +1,8 @@
 package packets
 
 import (
+	"net"
+
 	"github.com/scionproto/scion/go/lib/snet"
 )
 
@@ -40,12 +42,35 @@ type connectionTypes struct {
 	Bidirectional int
 }
 
+var ConnectionStates = newConnectionStates()
+
+func newConnectionStates() *connectionStates {
+	return &connectionStates{
+		Pending: 1,
+		Open:    2,
+		Closed:  3,
+	}
+}
+
+type connectionStates struct {
+	Pending int
+	Open    int
+	Closed  int
+}
+
+type BasicConn struct {
+	state int
+}
+
+func (c *BasicConn) GetState() int {
+	return c.state
+}
+
 type UDPConn interface {
-	Write([]byte) (int, error)
-	Read([]byte) (int, error)
+	net.Conn
 	Listen(snet.UDPAddr) error
 	Dial(snet.UDPAddr, *snet.Path) error
-	Close() error
+	GetState() int
 	GetMetrics() *PathMetrics
 	GetPath() *snet.Path
 	GetRemote() *snet.UDPAddr
@@ -53,6 +78,8 @@ type UDPConn interface {
 	WriteStream([]byte) (int, error)
 	ReadStream([]byte) (int, error)
 	GetType() int
+	GetId() string
+	SetId(string)
 }
 
 type TransportConstructor func() UDPConn

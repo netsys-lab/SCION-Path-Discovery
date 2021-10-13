@@ -2,6 +2,7 @@ package packets
 
 import (
 	"net"
+	"time"
 
 	optimizedconn "github.com/johannwagner/scion-optimized-connection/pkg"
 	"github.com/netsec-ethz/scion-apps/pkg/appnet"
@@ -25,6 +26,7 @@ func (sc *SCIONConn) GetType() int {
 // 0.0.3: Collecting metrics for read and written bytes is better at a place
 // where both information are available, so we put it here, not obsolete
 type SCIONConn struct { // Former: MonitoredConn
+	BasicConn
 	internalConn *optimizedconn.OptimizedSCIONConn
 	path         *snet.Path
 	peer         string
@@ -33,6 +35,7 @@ type SCIONConn struct { // Former: MonitoredConn
 	remote       *snet.UDPAddr
 	local        *net.UDPAddr
 	connType     int
+	id           string
 }
 
 // This simply wraps conn.Read and will later collect metrics
@@ -81,6 +84,7 @@ func (sc *SCIONConn) Write(b []byte) (int, error) {
 
 func (sc *SCIONConn) Dial(addr snet.UDPAddr, path *snet.Path) error {
 	appnet.SetPath(&addr, *path)
+	sc.state = ConnectionStates.Open
 	conn, err := optimizedconn.Dial(sc.local, &addr)
 	if err != nil {
 		return err
@@ -105,6 +109,7 @@ func (sc *SCIONConn) Listen(addr snet.UDPAddr) error {
 	sc.internalConn = conn
 	sc.local = &udpAddr
 	sc.connType = ConnectionTypes.Incoming
+	sc.state = ConnectionStates.Open
 	return nil
 }
 
@@ -115,6 +120,7 @@ func (sc *SCIONConn) SetLocal(addr snet.UDPAddr) {
 }
 
 func (sc *SCIONConn) Close() error {
+	sc.state = ConnectionStates.Closed
 	return sc.internalConn.Close()
 }
 
@@ -134,4 +140,33 @@ func (sc *SCIONConn) SetPath(path *snet.Path) {
 }
 func (sc *SCIONConn) SetRemote(remote *snet.UDPAddr) {
 	sc.remote = remote
+}
+
+func (sc *SCIONConn) LocalAddr() net.Addr {
+	return sc.local
+}
+
+// RemoteAddr returns the remote network address.
+func (sc *SCIONConn) RemoteAddr() net.Addr {
+	return sc.remote
+}
+
+func (sc *SCIONConn) SetDeadline(t time.Time) error {
+	return sc.internalConn.SetDeadline(t)
+}
+
+func (sc *SCIONConn) SetReadDeadline(t time.Time) error {
+	return sc.internalConn.SetReadDeadline(t)
+}
+
+func (sc *SCIONConn) SetWriteDeadline(t time.Time) error {
+	return sc.internalConn.SetWriteDeadline(t)
+}
+
+func (qc *SCIONConn) GetId() string {
+	return qc.id
+}
+
+func (qc *SCIONConn) SetId(id string) {
+	qc.id = id
 }

@@ -5,13 +5,14 @@ import (
 	"encoding/gob"
 	"flag"
 	"fmt"
+	"strings"
+	"time"
+
 	smp "github.com/netsys-lab/scion-path-discovery/api"
 	"github.com/netsys-lab/scion-path-discovery/packets"
 	"github.com/netsys-lab/scion-path-discovery/pathselection"
 	"github.com/scionproto/scion/go/lib/snet"
 	log "github.com/sirupsen/logrus"
-	"strings"
-	"time"
 )
 
 type PathPacket struct {
@@ -33,7 +34,7 @@ var localAddr *string = flag.String("l", "localhost:9999", "Set the local addres
 var remoteAddr *string = flag.String("r", "localhost:80", "Set the remote address")
 var loglevel *string = flag.String("loglevel", "INFO", "TRACE|DEBUG|INFO|WARN|ERROR|FATAL")
 
-func setLoging() {
+func setLogging() {
 	if loglevel == nil {
 		return
 	}
@@ -146,15 +147,15 @@ func sendPackets(mpSock *smp.MPPeerSock) {
 
 func main() {
 	flag.Parse()
-	setLoging()
 	gob.Register(PathPacket{})
+	setLogging()
 	lastSelection := LastSelection{}
 
 	peerAddr, err := snet.ParseUDPAddr(*remoteAddr)
 	if err != nil {
 		log.Fatalf("Failed to parse remote addr %s, err: %v", *remoteAddr, err)
 	}
-	mpSock := smp.NewMPPeerSock(*localAddr, peerAddr)
+	mpSock := smp.NewMPPeerSock(*localAddr, peerAddr, nil)
 	err = mpSock.Listen()
 	if err != nil {
 		log.Fatal("Failed to listen MPPeerSock", err)
@@ -163,7 +164,7 @@ func main() {
 	go func() {
 		for {
 			log.Info("Waiting for new paths")
-			paths := <- mpSock.OnPathsetChange
+			paths := <-mpSock.OnPathsetChange
 			log.Infof("New Paths available, got %d", len(paths.Paths))
 			for i, path := range paths.Paths {
 				log.Infof("Path %d: %s", i, PathToString(path.Path))
@@ -174,10 +175,16 @@ func main() {
 	go func() {
 		for {
 			log.Info("Waiting for new connections")
-			conns := <- mpSock.OnConnectionsChange
+			conns := <-mpSock.OnConnectionsChange
 			log.Infof("New Connections available, got %d", len(conns))
 			for i, v := range conns {
-				log.Infof("Connection %d is %s", i, packets.ConnTypeToString(v.GetType()))
+				var str string = ""
+				path := v.GetPath()
+				if path != nil {
+					str = PathToString(*path)
+				}
+
+				log.Infof("Connection %d is %s, path %s", i, packets.ConnTypeToString(v.GetType()), str)
 			}
 		}
 	}()

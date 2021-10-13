@@ -47,6 +47,17 @@ const (
 	CONN_HANDSHAKING = 3
 )
 
+type MPSocketOptions struct {
+	Transport                   string // "QUIC" | "SCION"
+	PathSelectionResponsibility string // "CLIENT" | "SERVER" | "BOTH"
+	MultiportMode               bool
+}
+
+var defaultSocketOptions = &MPSocketOptions{
+	Transport:                   "SCION",
+	PathSelectionResponsibility: "BOTH",
+}
+
 // MPPeerSock This represents a multipath socket that can handle 1-n paths.
 // Each socket is bound to a specific peer
 // TODO: One socket that handles multiple peers? This could be done by a wrapper
@@ -63,19 +74,44 @@ type MPPeerSock struct {
 	TransportConstructor    packets.TransportConstructor
 	PathQualityDB           pathselection.PathQualityDatabase
 	SelectedPathSet         *pathselection.PathSet
+	Mode                    string
+	Options                 *MPSocketOptions
 }
 
-func NewMPPeerSock(local string, peer *snet.UDPAddr) *MPPeerSock {
-	return &MPPeerSock{
-		Peer:                 peer,
-		Local:                local,
-		OnPathsetChange:      make(chan pathselection.PathSet),
-		TransportConstructor: packets.SCIONTransportConstructor,
-		UnderlaySocket:       socket.NewSCIONSocket(local, packets.SCIONTransportConstructor),
-		PacketScheduler:      &packets.SampleFirstPathScheduler{},
-		PathQualityDB:        pathselection.NewInMemoryPathQualityDatabase(),
-		OnConnectionsChange:  make(chan []packets.UDPConn),
+func NewMPPeerSock(local string, peer *snet.UDPAddr, options *MPSocketOptions) *MPPeerSock {
+
+	sock := &MPPeerSock{
+		Peer:                peer,
+		Local:               local,
+		OnPathsetChange:     make(chan pathselection.PathSet),
+		PacketScheduler:     &packets.SampleFirstPathScheduler{},
+		PathQualityDB:       pathselection.NewInMemoryPathQualityDatabase(),
+		OnConnectionsChange: make(chan []packets.UDPConn),
+		Options:             defaultSocketOptions,
 	}
+
+	if options != nil {
+		sock.Options = options
+	}
+
+	socketOptions := &socket.SockOptions{}
+	socketOptions.MultiportMode = sock.Options.MultiportMode
+	socketOptions.PathSelectionResponsibility = sock.Options.PathSelectionResponsibility
+
+	switch sock.Options.Transport {
+	case "SCION":
+		sock.UnderlaySocket = socket.NewSCIONSocket(local)
+		break
+	case "QUIC":
+		sock.UnderlaySocket = socket.NewQUICSocket(local, socketOptions)
+		break
+	}
+
+	return sock
+}
+
+func (mp *MPPeerSock) SetMode(mode string) {
+	mp.Mode = mode
 }
 
 func (mp *MPPeerSock) SetPeer(peer *snet.UDPAddr) {
@@ -105,19 +141,60 @@ func (mp *MPPeerSock) WaitForPeerConnect(pathSetWrapper pathselection.CustomPath
 	mp.Peer = remote
 
 	// Start selection process -> will update DB
-	mp.StartPathSelection(pathSetWrapper)
+	mp.StartPathSelection(pathSetWrapper, pathSetWrapper == nil)
+	log.Infof("Done path selection")
 	// wait until first signal on channel
 	// selectedPathSet := <-mp.OnPathsetChange
-
+	// time.Sleep(1 * time.Second)
 	// dial all paths selected by user algorithm
-	err = mp.DialAll(mp.SelectedPathSet, &ConnectOptions{
-		SendAddrPacket: false,
-	})
+	if pathSetWrapper != nil {
+		err = mp.DialAll(mp.SelectedPathSet, &socket.ConnectOptions{
+			SendAddrPacket: false,
+		})
+	} else {
+		go func() {
+			conns := mp.UnderlaySocket.GetConnections()
+			mp.PacketScheduler.SetConnections(conns)
+			mp.PathQualityDB.SetConnections(conns)
+			mp.connectionSetChange(conns)
+			for {
+				log.Debugf("Waiting for new connections...")
+				conn, err := mp.UnderlaySocket.WaitForIncomingConn()
+				if conn == nil && err == nil {
+					log.Debugf("Socket does not implement WaitForIncomingConn, stopping here...")
+					return
+				}
+				if err != nil {
+					log.Errorf("Failed to wait for incoming connection %s", err.Error())
+					return
+				}
+
+				conns := mp.UnderlaySocket.GetConnections()
+				mp.PacketScheduler.SetConnections(conns)
+				mp.PathQualityDB.SetConnections(conns)
+				mp.connectionSetChange(conns)
+			}
+		}()
+	}
 
 	return remote, err
 }
 
-func (mp *MPPeerSock) StartPathSelection(pathSetWrapper pathselection.CustomPathSelection) {
+/*
+func (mp *MPPeerSock) WaitForPeerConnectBack() (*snet.UDPAddr, error) {
+	log.Debugf("Waiting for incoming connection")
+	_, err := mp.UnderlaySocket.WaitForDialIn()
+	if err != nil {
+		return nil, err
+	}
+	log.Debugf("Accepted connection back %s", mp.Peer)
+	// mp.Peer = remote
+
+	return nil, err
+}
+*/
+
+func (mp *MPPeerSock) StartPathSelection(pathSetWrapper pathselection.CustomPathSelection, noPeriodicPathSelection bool) {
 	// DONE!
 	// TODO: Nico/Karola: Implement metrics collection and path alg invocation
 	// We could put a timer here.
@@ -130,17 +207,27 @@ func (mp *MPPeerSock) StartPathSelection(pathSetWrapper pathselection.CustomPath
 	// one could invoke this event here...
 	// To connect over the new pathset, call mpSock.DialAll(pathset)
 
-	ticker := time.NewTicker(10 * time.Second)
+	if pathSetWrapper == nil {
+		return
+	}
 
-	go func() {
-		for range ticker.C {
-			if mp.Peer != nil {
-				mp.pathSelection(pathSetWrapper)
-				mp.DialAll(mp.SelectedPathSet, nil)
+	// TODO: 10 seconds
+
+	if !noPeriodicPathSelection {
+		ticker := time.NewTicker(5 * time.Second)
+		go func() {
+			for range ticker.C {
+				if mp.Peer != nil {
+					mp.pathSelection(pathSetWrapper)
+					mp.DialAll(mp.SelectedPathSet, &socket.ConnectOptions{
+						SendAddrPacket:      true,
+						DontWaitForIncoming: true,
+					})
+				}
+
 			}
-
-		}
-	}()
+		}()
+	}
 
 	mp.pathSelection(pathSetWrapper)
 
@@ -180,23 +267,18 @@ func (mp *MPPeerSock) Write(b []byte) (int, error) {
 	return mp.PacketScheduler.Write(b)
 }
 
-type ConnectOptions struct {
-	SendAddrPacket bool
-}
-
 // A first approach could be to open connections over all
 // Paths to later reduce time effort for switching paths
-func (mp *MPPeerSock) Connect(pathSetWrapper pathselection.CustomPathSelection, options *ConnectOptions) error {
-	mp.StartPathSelection(pathSetWrapper)
+func (mp *MPPeerSock) Connect(pathSetWrapper pathselection.CustomPathSelection, options *socket.ConnectOptions) error {
 	// TODO: Rethink default values here...
-	opts := &ConnectOptions{}
+	opts := &socket.ConnectOptions{}
 	if options == nil {
 		opts.SendAddrPacket = true
 	} else {
 		opts = options
 	}
 	var err error
-
+	mp.StartPathSelection(pathSetWrapper, opts.NoPeriodicPathSelection)
 	/*selectedPathSet, err := mp.PathQualityDB.GetPathSet(mp.Peer)
 	if err != nil {
 		return err
@@ -241,17 +323,39 @@ func (mp *MPPeerSock) Disconnect() []error {
 */
 // Could call dialPath for all paths. However, not the connections over included
 // should be idled or closed here
-func (mp *MPPeerSock) DialAll(pathAlternatives *pathselection.PathSet, options *ConnectOptions) error {
+func (mp *MPPeerSock) DialAll(pathAlternatives *pathselection.PathSet, options *socket.ConnectOptions) error {
 	opts := socket.DialOptions{}
 	if options != nil {
 		opts.SendAddrPacket = options.SendAddrPacket
 	}
-	conns, err := mp.UnderlaySocket.DialAll(*mp.Peer, pathselection.UnwrapPathset(*pathAlternatives), opts)
+	conns, err := mp.UnderlaySocket.DialAll(*mp.Peer, pathAlternatives.Paths, opts)
 	if err != nil {
 		return err
 	}
 
-	log.Debugf("Dialled all to %s, got %d connections", mp.Peer.String(), len(conns))
+	log.Debugf("Dialed all to %s, got %d connections", mp.Peer.String(), len(conns))
+
+	if options == nil || !options.DontWaitForIncoming {
+		go func() {
+			for {
+				log.Debugf("Waiting for new connections...")
+				conn, err := mp.UnderlaySocket.WaitForIncomingConn()
+				if conn == nil && err == nil {
+					log.Debugf("Socket does not implement WaitForIncomingConn, stopping here...")
+					return
+				}
+				if err != nil {
+					log.Errorf("Failed to wait for incoming connection %s", err.Error())
+					return
+				}
+
+				conns = mp.UnderlaySocket.GetConnections()
+				mp.PacketScheduler.SetConnections(conns)
+				mp.PathQualityDB.SetConnections(conns)
+				mp.connectionSetChange(conns)
+			}
+		}()
+	}
 
 	mp.PacketScheduler.SetConnections(conns)
 	mp.PathQualityDB.SetConnections(conns)
@@ -273,4 +377,49 @@ func (mp *MPPeerSock) ReadStream(b []byte) (int, error) {
 // Here the socket could decide over which path to write
 func (mp *MPPeerSock) WriteStream(b []byte) (int, error) {
 	return mp.PacketScheduler.WriteStream(b)
+}
+
+type MPListenerOptions struct {
+	Transport string // "QUIC" | "SCION"
+}
+
+var defaultListenerOptions = &MPListenerOptions{
+	Transport: "SCION",
+}
+
+type MPListener struct {
+	local   string
+	socket  socket.UnderlaySocket
+	options *MPListenerOptions
+}
+
+func NewMPListener(local string, options *MPListenerOptions) *MPListener {
+	listener := &MPListener{
+		options: defaultListenerOptions,
+		local:   local,
+	}
+	if options != nil {
+		listener.options = options
+	}
+
+	switch listener.options.Transport {
+	case "SCION":
+		listener.socket = socket.NewSCIONSocket(local)
+		break
+	case "QUIC":
+		// No explicit path selection here, all done by later created MPPeerSocks
+		listener.socket = socket.NewQUICSocket(local, &socket.SockOptions{
+			PathSelectionResponsibility: "CLIENT",
+		})
+		break
+	}
+	return listener
+}
+
+func (l *MPListener) Listen() error {
+	return l.socket.Listen()
+}
+
+func (l *MPListener) WaitForMPPeerSockConnect() (*snet.UDPAddr, error) {
+	return l.socket.WaitForDialIn()
 }

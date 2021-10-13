@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 
 	"github.com/netsys-lab/scion-path-discovery/packets"
+	"github.com/netsys-lab/scion-path-discovery/pathselection"
 	"github.com/scionproto/scion/go/lib/snet"
 	log "github.com/sirupsen/logrus"
 )
@@ -28,10 +29,10 @@ type SCIONSocket struct {
 	connections          []packets.UDPConn
 }
 
-func NewSCIONSocket(local string, transportConstructor packets.TransportConstructor) *SCIONSocket {
+func NewSCIONSocket(local string) *SCIONSocket {
 	s := SCIONSocket{
 		local:                local,
-		transportConstructor: transportConstructor,
+		transportConstructor: packets.SCIONTransportConstructor,
 		connections:          make([]packets.UDPConn, 0),
 	}
 
@@ -73,7 +74,7 @@ func (s *SCIONSocket) WaitForDialIn() (*snet.UDPAddr, error) {
 	return &addr, nil
 }
 
-func (s *SCIONSocket) Dial(remote snet.UDPAddr, path snet.Path, options DialOptions) (packets.UDPConn, error) {
+func (s *SCIONSocket) Dial(remote snet.UDPAddr, path snet.Path, options DialOptions, i int) (packets.UDPConn, error) {
 	// appnet.SetPath(&remote, path)
 	// fmt.Printf("Dialing to %s via %s\n", remote.String(), remote.Path)
 	conn := s.transportConstructor()
@@ -104,15 +105,34 @@ func (s *SCIONSocket) Dial(remote snet.UDPAddr, path snet.Path, options DialOpti
 	return conn, nil
 }
 
-func (s *SCIONSocket) DialAll(remote snet.UDPAddr, path []snet.Path, options DialOptions) ([]packets.UDPConn, error) {
+func (s *SCIONSocket) WaitForIncomingConn() (packets.UDPConn, error) {
+	return nil, nil
+}
+
+func (s *SCIONSocket) DialAll(remote snet.UDPAddr, path []pathselection.PathQuality, options DialOptions) ([]packets.UDPConn, error) {
 	// There is always one listening connection
 	conns := make([]packets.UDPConn, 1)
 	conns[0] = s.connections[0]
-	for _, v := range path {
-		conn, err := s.Dial(remote, v, options)
+	for i, v := range path {
+		connOpen := false
+		var openConn packets.UDPConn
+		for _, c := range s.connections {
+			if c.GetId() == v.Id {
+				connOpen = true
+				openConn = c
+				break
+			}
+		}
+		if connOpen {
+			log.Debugf("Connection over path id %s already open, skipping", v.Id)
+			conns = append(conns, openConn)
+			continue
+		}
+		conn, err := s.Dial(remote, v.Path, options, i)
 		if err != nil {
 			return nil, err
 		}
+		conn.SetId(v.Id)
 		conns = append(conns, conn)
 	}
 
