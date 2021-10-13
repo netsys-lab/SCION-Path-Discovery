@@ -95,8 +95,8 @@ func NewMPPeerSock(local string, peer *snet.UDPAddr, options *MPSocketOptions) *
 	}
 
 	socketOptions := &socket.SockOptions{}
-	socketOptions.MultiportMode = options.MultiportMode
-	socketOptions.PathSelectionResponsibility = options.PathSelectionResponsibility
+	socketOptions.MultiportMode = sock.Options.MultiportMode
+	socketOptions.PathSelectionResponsibility = sock.Options.PathSelectionResponsibility
 
 	switch sock.Options.Transport {
 	case "SCION":
@@ -278,7 +278,7 @@ func (mp *MPPeerSock) Connect(pathSetWrapper pathselection.CustomPathSelection, 
 		opts = options
 	}
 	var err error
-	mp.StartPathSelection(pathSetWrapper, options.NoPeriodicPathSelection)
+	mp.StartPathSelection(pathSetWrapper, opts.NoPeriodicPathSelection)
 	/*selectedPathSet, err := mp.PathQualityDB.GetPathSet(mp.Peer)
 	if err != nil {
 		return err
