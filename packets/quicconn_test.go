@@ -7,10 +7,10 @@ import (
 	"github.com/netsec-ethz/scion-apps/pkg/appnet"
 )
 
-func Test_SCIONConn(t *testing.T) {
-	t.Run("SCIONConn Listen", func(t *testing.T) {
+func Test_QUICConn(t *testing.T) {
+	t.Run("QUICConn Listen", func(t *testing.T) {
 		conn := SCIONTransportConstructor()
-		addr, err := appnet.ResolveUDPAddr("1-ff00:0:110,[127.0.0.12]:41000")
+		addr, err := appnet.ResolveUDPAddr("1-ff00:0:110,[127.0.0.12]:51000")
 		if err != nil {
 			t.Error(err)
 		}
@@ -21,13 +21,13 @@ func Test_SCIONConn(t *testing.T) {
 		conn.Close()
 	})
 
-	t.Run("SCIONConn Dial", func(t *testing.T) {
-		conn := SCIONTransportConstructor()
-		addr, err := appnet.ResolveUDPAddr("1-ff00:0:110,[127.0.0.12]:42000")
+	t.Run("QUICConn Dial", func(t *testing.T) {
+		conn := QUICConnConstructor()
+		addr, err := appnet.ResolveUDPAddr("1-ff00:0:110,[127.0.0.12]:52000")
 		if err != nil {
 			t.Error(err)
 		}
-		laddr, err := appnet.ResolveUDPAddr("1-ff00:0:110,[127.0.0.12]:43000")
+		laddr, err := appnet.ResolveUDPAddr("1-ff00:0:110,[127.0.0.12]:53000")
 		if err != nil {
 			t.Error(err)
 		}
@@ -49,13 +49,13 @@ func Test_SCIONConn(t *testing.T) {
 
 	})
 
-	t.Run("SCIONConn Read/Write", func(t *testing.T) {
+	t.Run("QUICConn Read/Write", func(t *testing.T) {
 		conn := SCIONTransportConstructor()
-		addr, err := appnet.ResolveUDPAddr("1-ff00:0:110,[127.0.0.12]:44000")
+		addr, err := appnet.ResolveUDPAddr("1-ff00:0:110,[127.0.0.12]:54000")
 		if err != nil {
 			t.Error(err)
 		}
-		laddr, err := appnet.ResolveUDPAddr("1-ff00:0:110,[127.0.0.12]:45000")
+		laddr, err := appnet.ResolveUDPAddr("1-ff00:0:110,[127.0.0.12]:55000")
 		if err != nil {
 			t.Error(err)
 		}
