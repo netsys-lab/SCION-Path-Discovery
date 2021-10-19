@@ -39,14 +39,6 @@ import (
 // Note: The main func here is an example of an app using the library, so the code in there should
 // not part of the library. We could also move this part into examples folder
 
-// Connection States, need to be redefined/extended
-const (
-	CONN_IDLE        = 0
-	CONN_ACTIVE      = 1
-	CONN_CLOSED      = 2
-	CONN_HANDSHAKING = 3
-)
-
 type MPSocketOptions struct {
 	Transport                   string // "QUIC" | "SCION"
 	PathSelectionResponsibility string // "CLIENT" | "SERVER" | "BOTH"
@@ -60,9 +52,6 @@ var defaultSocketOptions = &MPSocketOptions{
 
 // MPPeerSock This represents a multipath socket that can handle 1-n paths.
 // Each socket is bound to a specific peer
-// TODO: One socket that handles multiple peers? This could be done by a wrapper
-// that handles multiple MPPeerSocks
-// TODO: Make fields private that should be private...
 type MPPeerSock struct {
 	Peer                    *snet.UDPAddr
 	OnPathsetChange         chan pathselection.PathSet
@@ -78,6 +67,10 @@ type MPPeerSock struct {
 	Options                 *MPSocketOptions
 }
 
+//
+// Instantiates a new Multipath Peer Socket
+// peer argument may be omitted for a socket waiting for an incoming connections
+//
 func NewMPPeerSock(local string, peer *snet.UDPAddr, options *MPSocketOptions) *MPPeerSock {
 
 	sock := &MPPeerSock{
@@ -110,14 +103,26 @@ func NewMPPeerSock(local string, peer *snet.UDPAddr, options *MPSocketOptions) *
 	return sock
 }
 
+//
+// Set Mode after intantiating the socket
+//
 func (mp *MPPeerSock) SetMode(mode string) {
 	mp.Mode = mode
 }
 
+//
+// Set Peer after instantiating the socket
+// This does not connect automatically after changing the peer
+//
 func (mp *MPPeerSock) SetPeer(peer *snet.UDPAddr) {
 	mp.Peer = peer
 }
 
+//
+// Listen on the provided local address
+// This call does not wait for incoming connections
+// and shout be called for both, waiting and dialing sockets
+//
 func (mp *MPPeerSock) Listen() error {
 	err := mp.UnderlaySocket.Listen()
 	if err != nil {
@@ -131,7 +136,16 @@ func (mp *MPPeerSock) Listen() error {
 	return nil
 }
 
-func (mp *MPPeerSock) WaitForPeerConnect(pathSetWrapper pathselection.CustomPathSelection) (*snet.UDPAddr, error) {
+//
+// This method waits until a remote MPPeerSock calls connect to this
+// socket's local address
+// A pathselection may be passed, which lets the socket dialing back to its remote
+// (e.g. for server-side path selection)
+// Since the MPPeerSock waits for only one incoming connection to determine a new peer
+// it starts waiting for other connections (if no selection passed) and fires the
+// OnConnectionsChange event for each new incoming connection
+//
+func (mp *MPPeerSock) WaitForPeerConnect(sel pathselection.CustomPathSelection) (*snet.UDPAddr, error) {
 	log.Debugf("Waiting for incoming connection")
 	remote, err := mp.UnderlaySocket.WaitForDialIn()
 	if err != nil {
@@ -141,13 +155,13 @@ func (mp *MPPeerSock) WaitForPeerConnect(pathSetWrapper pathselection.CustomPath
 	mp.Peer = remote
 
 	// Start selection process -> will update DB
-	mp.StartPathSelection(pathSetWrapper, pathSetWrapper == nil)
+	mp.StartPathSelection(sel, sel == nil)
 	log.Infof("Done path selection")
 	// wait until first signal on channel
 	// selectedPathSet := <-mp.OnPathsetChange
 	// time.Sleep(1 * time.Second)
 	// dial all paths selected by user algorithm
-	if pathSetWrapper != nil {
+	if sel != nil {
 		err = mp.DialAll(mp.SelectedPathSet, &socket.ConnectOptions{
 			SendAddrPacket: false,
 		})
@@ -180,24 +194,10 @@ func (mp *MPPeerSock) WaitForPeerConnect(pathSetWrapper pathselection.CustomPath
 	return remote, err
 }
 
-/*
-func (mp *MPPeerSock) WaitForPeerConnectBack() (*snet.UDPAddr, error) {
-	log.Debugf("Waiting for incoming connection")
-	_, err := mp.UnderlaySocket.WaitForDialIn()
-	if err != nil {
-		return nil, err
-	}
-	log.Debugf("Accepted connection back %s", mp.Peer)
-	// mp.Peer = remote
-
-	return nil, err
-}
-*/
-
-func (mp *MPPeerSock) StartPathSelection(pathSetWrapper pathselection.CustomPathSelection, noPeriodicPathSelection bool) {
-	// DONE!
-	// TODO: Nico/Karola: Implement metrics collection and path alg invocation
-	// We could put a timer here.
+//
+// Performs the first pathselection run and if noPeriodicPathSelection is false, also starts the cyclic pathselection
+//
+func (mp *MPPeerSock) StartPathSelection(sel pathselection.CustomPathSelection, noPeriodicPathSelection bool) {
 	// Every X seconds we collect metrics from the underlaySocket and its connections
 	// and provide them for path selection
 	// So in a timer call underlaysocket.GetConnections
@@ -207,18 +207,16 @@ func (mp *MPPeerSock) StartPathSelection(pathSetWrapper pathselection.CustomPath
 	// one could invoke this event here...
 	// To connect over the new pathset, call mpSock.DialAll(pathset)
 
-	if pathSetWrapper == nil {
+	if sel == nil {
 		return
 	}
-
-	// TODO: 10 seconds
 
 	if !noPeriodicPathSelection {
 		ticker := time.NewTicker(5 * time.Second)
 		go func() {
 			for range ticker.C {
 				if mp.Peer != nil {
-					mp.pathSelection(pathSetWrapper)
+					mp.pathSelection(sel)
 					mp.DialAll(mp.SelectedPathSet, &socket.ConnectOptions{
 						SendAddrPacket:      true,
 						DontWaitForIncoming: true,
@@ -229,26 +227,28 @@ func (mp *MPPeerSock) StartPathSelection(pathSetWrapper pathselection.CustomPath
 		}()
 	}
 
-	mp.pathSelection(pathSetWrapper)
-
-	// Determine Pathlevelpeers
-	// mp.PacketScheduler.SetPathlevelPeers()
+	mp.pathSelection(sel)
 }
 
-func (mp *MPPeerSock) pathSelection(pathSetWrapper pathselection.CustomPathSelection) {
+//
+//  Actual pathselection implementation
+//
+func (mp *MPPeerSock) pathSelection(sel pathselection.CustomPathSelection) {
 	mp.PathQualityDB.UpdatePathQualities(mp.Peer)
 	mp.PathQualityDB.UpdateMetrics()
 	// update DB / collect metrics
 	pathSet, err := mp.PathQualityDB.GetPathSet(mp.Peer)
 	if err != nil {
+		log.Errorf("Failed to get current pathset", err)
 		return
 	}
-	// TODO: Error handling
-	selectedPathSet, err := pathSetWrapper.CustomPathSelectAlg(&pathSet)
+	selectedPathSet, err := sel.CustomPathSelectAlg(&pathSet)
+	if err != nil {
+		log.Errorf("Failed to get call customPathSelection", err)
+		return
+	}
 	mp.SelectedPathSet = selectedPathSet
-	// mp.DialAll(selectedPathSet, &ConnectOptions{})
 	mp.pathSetChange(*selectedPathSet)
-	// mp.OnPathsetChange <- *selectedPathSet
 }
 
 //
@@ -310,17 +310,6 @@ func (mp *MPPeerSock) Disconnect() []error {
 	return mp.UnderlaySocket.CloseAll()
 }
 
-// DialPath This one should "activate" the connection over the respective path
-// or create one if its not there yet
-/*func (mp *MPPeerSock) DialPath(path *snet.Path) (*packets.QUICReliableConn, error) {
-	// copy mp.Peer to not interfere with other connections
-	connection, err := NewMonitoredConn(*mp.Peer, path)
-	if err != nil {
-		return nil, err
-	}
-	return connection, nil
-}
-*/
 // Could call dialPath for all paths. However, not the connections over included
 // should be idled or closed here
 func (mp *MPPeerSock) DialAll(pathAlternatives *pathselection.PathSet, options *socket.ConnectOptions) error {
@@ -387,12 +376,18 @@ var defaultListenerOptions = &MPListenerOptions{
 	Transport: "SCION",
 }
 
+// Waits for multiple incoming MPPeerSock connections
+// Since the MPPeerSock itself is bound to a particular
+// peer, it can only wait for one incoming connection
+// Therefor, the MPListener can be used to wait for multiple
+// Incoming peer connections
 type MPListener struct {
 	local   string
 	socket  socket.UnderlaySocket
 	options *MPListenerOptions
 }
 
+// Instantiates a new MPListener
 func NewMPListener(local string, options *MPListenerOptions) *MPListener {
 	listener := &MPListener{
 		options: defaultListenerOptions,
@@ -416,10 +411,15 @@ func NewMPListener(local string, options *MPListenerOptions) *MPListener {
 	return listener
 }
 
+// Needs to be called to listen before waiting can be started
 func (l *MPListener) Listen() error {
 	return l.socket.Listen()
 }
 
+// Waits for new incoming MPPeerSocks
+// Should be called in a loop
+// Using the returned addr, a new MPPeerSock can be instantiated
+// That dials back to the incoming socket
 func (l *MPListener) WaitForMPPeerSockConnect() (*snet.UDPAddr, error) {
 	return l.socket.WaitForDialIn()
 }
