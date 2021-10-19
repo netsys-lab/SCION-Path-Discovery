@@ -40,6 +40,30 @@ SCION/QUIC, using quic-go as QUIC implementation underneath, works with stateful
 ![pathdisc (1)](https://user-images.githubusercontent.com/32448709/137102881-b6d56d0a-84ac-4dc0-b9d3-2cea9c615333.jpg)
 
 
+## Using Multiple Paths
+After connecting to a peer using the `Connect` method, a slice of connections is can be fetched via `sock.UnderlaySocket.GetConnections`, where each connection uses one of the selected path internally. The library provides the channel `OnConnectionsChange` that returns new connections each time an internal ticker starts performing new pathselection. Each connection has a `GetId` method which returns its unique identifier (and also the one of its underlying path), so applications can check if the returned connections changed. The library does not dial again over already used paths. A sample of using those methods looks like this:
+
+```go
+for _, conn := range mpSock.UnderlaySocket.GetConnections() {
+ // ...
+}
+
+for {
+	log.Info("Waiting for new connections")
+	conns := <-mpSock.OnConnectionsChange
+	log.Infof("New Connections available, got %d", len(conns))
+	for i, v := range conns {
+		var str string = ""
+		path := v.GetPath()
+		if path != nil {
+			str = PathToString(*path)
+		}
+
+		log.Infof("Connection %d is %s, path %s", i, packets.ConnTypeToString(v.GetType()), str)
+	}
+}
+```
+
 ## Extensibility
 We aim the design of this library to be easily extensible for further metrics, Connections or UnderlaySockets. New UnderlaySockets and/or Connections can be added without touching the existing ones and may be added via the socketOptions "Transport" flag. An UnderlaySocket may also be extended to use different Connections, e.g. the snet SCION Connection [] or the SCION OptimizedConn []. By introducing the CustomPathSelection interface, applications can easily implement different kinds of pathselection without the need of touching the library, but with helpful utilities to pre-sort paths.
 
