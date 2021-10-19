@@ -21,34 +21,6 @@ func Test_QUICConn(t *testing.T) {
 		conn.Close()
 	})
 
-	t.Run("QUICConn Dial", func(t *testing.T) {
-		conn := QUICConnConstructor()
-		addr, err := appnet.ResolveUDPAddr("1-ff00:0:110,[127.0.0.12]:52000")
-		if err != nil {
-			t.Error(err)
-		}
-		laddr, err := appnet.ResolveUDPAddr("1-ff00:0:110,[127.0.0.12]:53000")
-		if err != nil {
-			t.Error(err)
-		}
-		conn.SetLocal(*laddr)
-		err = appnet.SetDefaultPath(addr)
-		if err != nil {
-			t.Error(err)
-		}
-		p, err := addr.GetPath()
-		if err != nil {
-			t.Error(err)
-		}
-		err = conn.Dial(*addr, &p)
-		if err != nil {
-			t.Error(err)
-		}
-
-		defer conn.Close()
-
-	})
-
 	t.Run("QUICConn Read/Write", func(t *testing.T) {
 		conn := SCIONTransportConstructor()
 		addr, err := appnet.ResolveUDPAddr("1-ff00:0:110,[127.0.0.12]:54000")
