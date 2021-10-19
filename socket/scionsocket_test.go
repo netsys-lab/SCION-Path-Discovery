@@ -52,7 +52,7 @@ func Test_SCIONSocket(t *testing.T) {
 				Path: paths[0],
 			}
 
-			sock2.DialAll(*sock.localAddr, pathQualities, DialOptions{})
+			sock2.DialAll(*sock.localAddr, pathQualities, DialOptions{SendAddrPacket: true})
 		}()
 
 		_, err = sock.WaitForDialIn()
