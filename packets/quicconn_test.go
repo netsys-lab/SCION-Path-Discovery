@@ -81,7 +81,7 @@ func Test_QUICConn(t *testing.T) {
 			conn.Write(make([]byte, 1200))
 		}()
 		buf := make([]byte, 1200)
-		_, err = conn.Read(buf)
+		_, err = listenConn.Read(buf)
 		if err != nil {
 			t.Error(err)
 		}
