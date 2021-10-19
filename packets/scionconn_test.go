@@ -26,6 +26,15 @@ func Test_SCIONConn_Listen(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
+		laddr, err := appnet.ResolveUDPAddr("1-ff00:0:110,[127.0.0.12]:43000")
+		if err != nil {
+			t.Error(err)
+		}
+		err = conn.Listen(*laddr)
+		if err != nil {
+			t.Error(err)
+		}
+
 		err = appnet.SetDefaultPath(addr)
 		if err != nil {
 			t.Error(err)
