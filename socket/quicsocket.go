@@ -162,25 +162,6 @@ func (s *QUICSocket) WaitForDialIn() (*snet.UDPAddr, error) {
 
 	log.Debugf("Set connection ready")
 
-	// TODO: Rethink this
-	/*go func(listenConn *packets.QUICReliableConn) {
-		for {
-			log.Debugf("Accepting new Stream on listen socket")
-			stream, err := listenConn.AcceptStream()
-			if err != nil {
-				log.Fatalf("QUIC Accept err %s", err.Error())
-			}
-
-			log.Debugf("Accepted new Stream on listen socket")
-
-			newConn := &packets.QUICReliableConn{}
-			newConn.SetLocal(*s.localAddr)
-			newConn.SetStream(stream)
-
-			s.listenConns = append(s.listenConns, newConn)
-		}
-	}(s.listenConns[0])*/
-
 	_, err = stream.Read(bts)
 	if err != nil {
 		return nil, err
@@ -193,6 +174,7 @@ func (s *QUICSocket) WaitForDialIn() (*snet.UDPAddr, error) {
 		return nil, err
 	}
 
+	s.listenConns[0].SetRemote(&p.Addr)
 	log.Debugf("Waiting for %d more connections", p.NumPaths-1)
 
 	for i := 1; i < p.NumPaths; i++ {
@@ -224,7 +206,7 @@ func (s *QUICSocket) Dial(remote snet.UDPAddr, path snet.Path, options DialOptio
 		log.Debugf("Sending addr packet %d for conn %p", options.SendAddrPacket, &conn)
 		if options.SendAddrPacket {
 			var network bytes.Buffer
-			enc := gob.NewEncoder(&network) // Will write to network.
+			enc := gob.NewEncoder(&network)
 			p := DialPacketQuic{
 				Addr:     *s.localAddr,
 				NumPaths: options.NumPaths,
@@ -254,7 +236,7 @@ func (s *QUICSocket) Dial(remote snet.UDPAddr, path snet.Path, options DialOptio
 		log.Debugf("Sending addr packet %d for conn %p", options.SendAddrPacket, &conn)
 		if options.SendAddrPacket {
 			var network bytes.Buffer
-			enc := gob.NewEncoder(&network) // Will write to network.
+			enc := gob.NewEncoder(&network)
 			p := DialPacketQuic{
 				Addr:     *s.localAddr,
 				NumPaths: options.NumPaths,
@@ -274,47 +256,13 @@ func (s *QUICSocket) Dial(remote snet.UDPAddr, path snet.Path, options DialOptio
 }
 
 func (s *QUICSocket) DialAll(remote snet.UDPAddr, path []pathselection.PathQuality, options DialOptions) ([]packets.UDPConn, error) {
-	// TODO: Rethink this
-
-	/*go func(listenConn *packets.QUICReliableConn) {
-
-		stream, err := listenConn.AcceptStream()
-		if err != nil {
-			log.Fatalf("QUIC Accept err %s", err.Error())
-		}
-		s.listenConns[0].SetStream(stream)
-
-		select {
-		case s.listenConns[0].Ready <- true:
-		default:
-		}
-
-		for {
-			log.Debugf("Accepting new Stream on listen socket")
-			stream, err := listenConn.AcceptStream()
-			if err != nil {
-				log.Fatalf("QUIC Accept err %s", err.Error())
-			}
-
-			log.Debugf("Accepted new Stream on listen socket")
-
-			newConn := &packets.QUICReliableConn{}
-			newConn.SetLocal(*s.localAddr)
-			newConn.SetStream(stream)
-
-			s.listenConns = append(s.listenConns, newConn)
-		}
-	}(s.listenConns[0])*/
-
 	if options.NumPaths == 0 && len(path) > 0 {
 		options.NumPaths = len(path)
 	}
 
-	// TODO: Differentiate between client/server based selection
 	conns := make([]packets.UDPConn, 0)
-	// conns[0] = s.listenConns[0]
 	for i, v := range path {
-		// TODO: Check if conn over path is already open
+		// Check if conn over path is already open
 		connOpen := false
 		var openConn packets.UDPConn
 		for _, c := range s.dialConns {
@@ -335,8 +283,6 @@ func (s *QUICSocket) DialAll(remote snet.UDPAddr, path []pathselection.PathQuali
 		}
 		conn.SetId(v.Id)
 		conns = append(conns, conn)
-		// TODO: Last maybe not working sleep
-		// time.Sleep(1 * time.Second)
 	}
 
 	select {

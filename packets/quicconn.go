@@ -155,6 +155,7 @@ func (qc *QUICReliableConn) Dial(addr snet.UDPAddr, path *snet.Path) error {
 		return err
 	}
 
+	qc.remote = &addr
 	log.Debugf("Opened Stream to %s", addr.String())
 	qc.state = ConnectionStates.Open
 	qc.internalConn = stream
