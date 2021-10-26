@@ -40,16 +40,16 @@ func Test_QUICConn(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		err = conn.Dial(*addr, &p)
-		if err != nil {
-			t.Error(err)
-		}
 
 		listenConn := QUICConnConstructor()
 		listenConn.Listen(*addr)
 
 		go func() {
 			time.Sleep(100 * time.Millisecond)
+			err = conn.Dial(*addr, &p)
+			if err != nil {
+				t.Error(err)
+			}
 			conn.Write(make([]byte, 1200))
 		}()
 		buf := make([]byte, 1200)
