@@ -239,12 +239,12 @@ func (mp *MPPeerSock) pathSelection(sel pathselection.CustomPathSelection) {
 	// update DB / collect metrics
 	pathSet, err := mp.PathQualityDB.GetPathSet(mp.Peer)
 	if err != nil {
-		log.Errorf("Failed to get current pathset", err)
+		log.Errorf("Failed to get current pathset %s", err)
 		return
 	}
 	selectedPathSet, err := sel.CustomPathSelectAlg(&pathSet)
 	if err != nil {
-		log.Errorf("Failed to get call customPathSelection", err)
+		log.Errorf("Failed to get call customPathSelection %s", err)
 		return
 	}
 	mp.SelectedPathSet = selectedPathSet
