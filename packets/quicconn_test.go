@@ -9,7 +9,7 @@ import (
 
 func Test_QUICConn(t *testing.T) {
 	t.Run("QUICConn Listen", func(t *testing.T) {
-		conn := SCIONTransportConstructor()
+		conn := QUICConnConstructor()
 		addr, err := appnet.ResolveUDPAddr("1-ff00:0:110,[127.0.0.12]:51000")
 		if err != nil {
 			t.Error(err)
@@ -22,7 +22,7 @@ func Test_QUICConn(t *testing.T) {
 	})
 
 	t.Run("QUICConn Read/Write", func(t *testing.T) {
-		conn := SCIONTransportConstructor()
+		conn := QUICConnConstructor()
 		addr, err := appnet.ResolveUDPAddr("1-ff00:0:110,[127.0.0.12]:54000")
 		if err != nil {
 			t.Error(err)
@@ -45,7 +45,7 @@ func Test_QUICConn(t *testing.T) {
 			t.Error(err)
 		}
 
-		listenConn := SCIONTransportConstructor()
+		listenConn := QUICConnConstructor()
 		listenConn.Listen(*addr)
 
 		go func() {
