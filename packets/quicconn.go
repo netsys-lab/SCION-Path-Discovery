@@ -212,6 +212,9 @@ func (qc *QUICReliableConn) ReadStream(b []byte) (int, error) {
 
 func (qc *QUICReliableConn) Close() error {
 	qc.state = ConnectionStates.Closed
+	if qc.internalConn == nil {
+		return nil
+	}
 	return qc.internalConn.Close()
 }
 
