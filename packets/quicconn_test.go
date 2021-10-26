@@ -22,7 +22,7 @@ func Test_QUICConn(t *testing.T) {
 	})
 
 	t.Run("QUICConn Read/Write", func(t *testing.T) {
-		conn := QUICConnConstructor()
+		conn := &QUICReliableConn{}
 		addr, err := appnet.ResolveUDPAddr("1-ff00:0:110,[127.0.0.12]:54000")
 		if err != nil {
 			t.Error(err)
@@ -41,7 +41,7 @@ func Test_QUICConn(t *testing.T) {
 			t.Error(err)
 		}
 
-		listenConn := QUICConnConstructor()
+		listenConn := &QUICReliableConn{}
 		listenConn.Listen(*addr)
 
 		go func() {
@@ -52,6 +52,11 @@ func Test_QUICConn(t *testing.T) {
 			}
 			conn.Write(make([]byte, 1200))
 		}()
+		s, err := listenConn.AcceptStream()
+		if err != nil {
+			t.Error(err)
+		}
+		listenConn.SetStream(s)
 		buf := make([]byte, 1200)
 		_, err = listenConn.Read(buf)
 		if err != nil {
