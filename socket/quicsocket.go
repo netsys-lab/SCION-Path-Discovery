@@ -203,7 +203,7 @@ func (s *QUICSocket) Dial(remote snet.UDPAddr, path snet.Path, options DialOptio
 			return nil, err
 		}
 
-		log.Debugf("Sending addr packet %d for conn %p", options.SendAddrPacket, &conn)
+		// log.Debugf("Sending addr packet %d for conn %p", options.SendAddrPacket, &conn)
 		if options.SendAddrPacket {
 			var network bytes.Buffer
 			enc := gob.NewEncoder(&network)
@@ -233,7 +233,7 @@ func (s *QUICSocket) Dial(remote snet.UDPAddr, path snet.Path, options DialOptio
 			return nil, err
 		}
 
-		log.Debugf("Sending addr packet %d for conn %p", options.SendAddrPacket, &conn)
+		// log.Debugf("Sending addr packet %d for conn %p", options.SendAddrPacket, &conn)
 		if options.SendAddrPacket {
 			var network bytes.Buffer
 			enc := gob.NewEncoder(&network)
