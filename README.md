@@ -31,8 +31,8 @@ Further information:
 This task includes the implementation of a demonstrator for the efficient multipath library developed in task 1 and 2 - BitTorrent over SCION - as well as adding a test suite for the library.
 
 ### Milestone(s)
-- [ ] Working BitTorrent over SCION implementation
-- [ ] Continuous integration based testing
+- [x] [Working BitTorrent over SCION implementation](https://github.com/netsys-lab/bittorrent-over-scion)
+- [x] [Continuous integration based testing](https://github.com/netsys-lab/scion-path-discovery/actions)
 
 ## Task 4. Evaluation of Efficient Multipath in SCION library
 This task consists of performance measurements for different multipath scenarios, and processing the recommendations made from the security quickscan by Radically Open Security. Additionally, proper documentation is added so that third party developers can start using the library.
