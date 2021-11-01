@@ -18,10 +18,10 @@ This task consists of creating a detailed [concept](doc/path-selection.org) as w
 - [x] [Architecture design](https://pkg.go.dev/github.com/netsys-lab/scion-path-discovery#section-directories) including components, algorithms and design of the implementation
 
 ## Task 2. Implement Efficient Multipath over SCION
-This task contains the [implementation](https://github.com/netsys-lab/scion-path-discovery) of efficient multipath for BitTorrent over SCION in a portable software library.
+This task contains the [implementation](https://github.com/netsys-lab/scion-path-discovery/releases/tag/task_2) of efficient multipath for BitTorrent over SCION in a portable software library.
 
 ### Milestone(s)
-- [x] Working [implementation](https://github.com/netsys-lab/scion-path-discovery) 
+- [x] Working [implementation](https://github.com/netsys-lab/scion-path-discovery/releases/tag/task_2) 
 
 Further information:
 - [x] [Documentation](doc/library.md) of the implemented components and how they work together
