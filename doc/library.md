@@ -10,7 +10,7 @@ The following components are compound to implement the multipath library
 - **CustomPathSelection**: Provides an interface to implement custom path selection algorithms
 - **MPPeerSock**: Represents a multipath socket to a particular peer
 
-The following Figure illustrates, how these compontens are put together to form a working multipath library.
+The following Figure illustrates, how these compontens are put together to form a working multipath library. This Figure shows the actual implementation of the [concept presented in task 1](https://github.com/netsys-lab/scion-path-discovery/blob/main/doc/path-selection.org#concept).
 
 ![pathdiscovery-abstractions (1)](https://user-images.githubusercontent.com/32448709/137099751-ec4233a6-6312-407b-ab94-1139c484029b.jpg)
 
