@@ -1,6 +1,6 @@
 # SCION Path Discovery
 [![Go Reference](https://pkg.go.dev/badge/github.com/netsys-lab/scion-path-discovery.svg)](https://pkg.go.dev/github.com/netsys-lab/scion-path-discovery)
-[![License](https://img.shields.io/github/license/netsys-lab/scion-path-discovery.svg?maxAge=2592000)](https://github.com/netsys-lab/scin-path-discovery/blob/master/LICENSE)
+[![License](https://img.shields.io/github/license/netsys-lab/scion-path-discovery.svg?maxAge=2592000)](LICENSE)
 [![Go Report Card](https://goreportcard.com/badge/github.com/netsys-lab/scion-path-discovery)](https://goreportcard.com/report/github.com/netsys-lab/scion-path-discovery)
 
 
@@ -25,7 +25,7 @@ This task contains the [implementation](https://github.com/netsys-lab/scion-path
 
 Further information:
 - [x] [Documentation](doc/library.md) of the implemented components and how they work together
-- [x] [Example](examples/mppingpong/main.go) of how the library can be used to perform multipath communication
+- [x] [Example](doc/library.md#example-multipath-pingpong) of how the library can be used to perform multipath communication
 
 ## Task 3. Demonstrate library with BitTorrent over SCION
 This task includes the [implementation](https://github.com/netsys-lab/bittorrent-over-scion/releases/tag/implementation) of a demonstrator for the efficient multipath library developed in task 1 and 2 - BitTorrent over SCION - as well as adding a test suite for the library.
