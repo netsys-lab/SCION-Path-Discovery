@@ -10,7 +10,7 @@ The following components are compound to implement the multipath library
 - **CustomPathSelection**: Provides an interface to implement custom path selection algorithms
 - **MPPeerSock**: Represents a multipath socket to a particular peer
 
-The following Figure illustrates, how these compontens are put together to form a working multipath library. This Figure shows the actual implementation of the [concept presented in task 1](https://github.com/netsys-lab/scion-path-discovery/blob/main/doc/path-selection.org#concept).
+The following figure illustrates, how these components are combined to form a working multipath library, which implements the [path selection concept](https://github.com/netsys-lab/scion-path-discovery/blob/main/doc/path-selection.org#concept).
 
 ![pathdiscovery-abstractions (1)](https://user-images.githubusercontent.com/32448709/137099751-ec4233a6-6312-407b-ab94-1139c484029b.jpg)
 
@@ -26,22 +26,22 @@ type CustomPathSelection interface {
 }
 ```
 
-This interface needs to instantiated and passed to the MPPeerSock. Everytime new PathQualities are available, the `CustomPathSelectAlg` is executed, getting the new PathSet containing all PathQualities. The algorithm now needs to decide, out of all available PathQualities, which paths should be used. It returns a new pathset, containing all selected PathQualities, or an error if something unexpected happened.
+This interface needs to be instantiated and passed to the MPPeerSock. Every time new PathQualities are available, the `CustomPathSelectAlg` is executed, getting the new PathSet containing all PathQualities. The algorithm then decides, out of all available PathQualities, which paths should be used. It returns a new pathset, containing all selected PathQualities, or an error if something unexpected happened.
 
-The MPPeerSock now handles this selection result and ensures, that connections over the selected paths are open. Connections over already used paths are kept untouched, new paths will be handled by creating new connections. Connections over unselected paths are marked as closed, so that the application can react to stop using them and close them gracefully.
+The MPPeerSock then handles this selection result and ensures, that connections over the selected paths are open. Connections over already used paths are kept untouched, new paths will be handled by creating new connections. Connections over unselected paths are marked as closed, so that the application can react to stop using them and close them gracefully.
 
 ## Connection Types
-At the moment, we support two different Connections/UnderlaySockets: SCION over plain UDP (SCION/UDP) and SCION over QUIC (SCION/QUIC). SCION/UDP does not support bidirectional connections, meaning dialing to a remote peer does not create a stateful connection between the peers. Furthermore, there is no guarantee that packets are transferred properly. Finally, both peers may use a different number of outgoing connections to the particular remote peer, since all incoming SCION packets arrive at the same listening connection. The next Figure shows how communication using SCION/UDP looks:
+At the moment, we support two different Connections/UnderlaySockets: SCION over plain UDP (SCION/UDP) and SCION over QUIC (SCION/QUIC). SCION/UDP does not support bidirectional connections, meaning dialing to a remote peer does not create a stateful connection between the peers. Furthermore, there is no guarantee that packets are transferred properly. Finally, both peers may use a different number of outgoing connections to the particular remote peer, since all incoming SCION packets arrive at the same listening connection. The next figure shows the communication using SCION/UDP:
 
 ![pathdisc](https://user-images.githubusercontent.com/32448709/137102316-0c98273c-40f1-4399-9f25-60ae8da27f23.jpg)
 
-SCION/QUIC, using quic-go as QUIC implementation underneath, works with stateful connections. This means both peers need to agree on a number of bidirectional connections. For SCION/QUIC, SCION packets sent over a particular connection arrive need to be read from the remote peer at exactly that connection, compared to SCION/UDP where all packets arrive at the same connection. The next Figure shows how SICON/QUIC looks:
+SCION/QUIC, using quic-go as QUIC implementation underneath, works with stateful connections. This means both peers need to agree on a number of bidirectional connections. For SCION/QUIC, SCION packets sent over a particular connection need to be read from the remote peer at exactly that connection, compared to SCION/UDP where all packets arrive at the same connection. The next figure illustrates how SCION/QUIC works:
 
 ![pathdisc (1)](https://user-images.githubusercontent.com/32448709/137102881-b6d56d0a-84ac-4dc0-b9d3-2cea9c615333.jpg)
 
 
 ## Using Multiple Paths
-After connecting to a peer using the `Connect` method, a slice of connections is can be fetched via `sock.UnderlaySocket.GetConnections`, where each connection uses one of the selected path internally. The library provides the channel `OnConnectionsChange` that returns new connections each time an internal ticker starts performing new pathselection. Each connection has a `GetId` method which returns its unique identifier (and also the one of its underlying path), so applications can check if the returned connections changed. The library does not dial again over already used paths. A sample of using those methods looks like this:
+After connecting to a peer using the `Connect` method, a slice of connections can be fetched via `sock.UnderlaySocket.GetConnections`, where each connection uses one of the selected paths internally. The library provides the channel `OnConnectionsChange` that returns new connections each time an internal ticker starts performing new pathselection. Each connection has a `GetId` method which returns its unique identifier (and also the one of its underlying path), so applications can check if the returned connections changed. The library does not dial again over already used paths. An example use of those methods is shown below:
 
 ```go
 for _, conn := range mpSock.UnderlaySocket.GetConnections() {
@@ -65,10 +65,10 @@ for {
 ```
 
 ## Extensibility
-We aim the design of this library to be easily extensible for further metrics, Connections or UnderlaySockets. New UnderlaySockets and/or Connections can be added without touching the existing ones and may be added via the socketOptions "Transport" flag. An UnderlaySocket may also be extended to use different Connections, e.g. the [snet](https://github.com/scionproto/scion/tree/master/go/lib/snet) SCION Connection or the [SCION OptimizedConn](https://github.com/johannwagner/scion-optimized-connection). By introducing the CustomPathSelection interface, applications can easily implement different kinds of pathselection without the need of touching the library, but with helpful utilities to pre-sort paths.
+We aim the design of this library to be easily extensible for further metrics, Connections or UnderlaySockets. New UnderlaySockets and/or Connections can be added without touching the existing ones and may be added via the socketOptions "Transport" flag. An UnderlaySocket may also be extended to use different Connections, e.g. the [snet](https://github.com/scionproto/scion/tree/master/go/lib/snet) SCION Connection or the [SCION OptimizedConn](https://github.com/johannwagner/scion-optimized-connection). By introducing the CustomPathSelection interface, applications can easily implement different kinds of pathselection without the need for touching the library, but with helpful utilities to pre-sort paths.
 
 ## Example: Multipath PingPong
-To test the multipath capabilities of this library, we provide an example, called [multipath pingpong](https://github.com/netsys-lab/scion-path-discovery/blob/main/examples/mppingpong/main.go). This example can be started with a local, a remote SCION address and a number of outgoing connections n. We call one running instance of this example a peer. To see how multipath communication works, two peers need to be started. Each peer sends ping packets over n connections and reads all incoming pong connections, printing over which paths the pings are sent and over which paths the pongs are received. This example is using SCION/UDP connections, meaning there is no handshake to initiate bidiretional connections. 
+To test the multipath capabilities of this library, we provide an example, called [multipath pingpong](https://github.com/netsys-lab/scion-path-discovery/blob/main/examples/mppingpong/main.go). This example can be started with a local and a remote SCION address and a number of outgoing connections n. We call one running instance of this example a peer. To see how multipath communication works, two peers need to be started. Each peer sends ping packets over n connections and reads all incoming pong connections, echoing over which paths the pings are sent and over which paths the pongs are received. This example is using SCION/UDP connections, meaning there is no handshake to initiate bidirectional connections. 
 
 Host 1: `./mppingpong -l "19-ffaa:1:c3f,[141.44.25.148]:32000" -r "19-ffaa:1:cf0,[141.44.25.151]:32000"  -n 2`
 
