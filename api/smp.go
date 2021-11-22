@@ -66,6 +66,7 @@ type MPPeerSock struct {
 	Mode                    string
 	Options                 *MPSocketOptions
 	selection               pathselection.CustomPathSelection
+	MetricsInterval         time.Duration
 }
 
 //
@@ -82,6 +83,7 @@ func NewMPPeerSock(local string, peer *snet.UDPAddr, options *MPSocketOptions) *
 		PathQualityDB:       pathselection.NewInMemoryPathQualityDatabase(),
 		OnConnectionsChange: make(chan []packets.UDPConn),
 		Options:             defaultSocketOptions,
+		MetricsInterval:     100 * time.Millisecond,
 	}
 
 	if options != nil {
@@ -166,7 +168,9 @@ func (mp *MPPeerSock) WaitForPeerConnect(sel pathselection.CustomPathSelection) 
 		err = mp.DialAll(mp.SelectedPathSet, &socket.ConnectOptions{
 			SendAddrPacket: false,
 		})
+		mp.collectMetrics()
 	} else {
+		mp.collectMetrics()
 		go func() {
 			conns := mp.UnderlaySocket.GetConnections()
 			mp.PacketScheduler.SetConnections(conns)
@@ -193,6 +197,16 @@ func (mp *MPPeerSock) WaitForPeerConnect(sel pathselection.CustomPathSelection) 
 	}
 
 	return remote, err
+}
+
+func (mp *MPPeerSock) collectMetrics() {
+
+	ticker := time.NewTicker(mp.MetricsInterval)
+	go func() {
+		<-ticker.C
+		mp.PathQualityDB.UpdateMetrics()
+	}()
+
 }
 
 //
@@ -239,8 +253,7 @@ func (mp *MPPeerSock) ForcePathSelection() {
 //  Actual pathselection implementation
 //
 func (mp *MPPeerSock) pathSelection(sel pathselection.CustomPathSelection) {
-	mp.PathQualityDB.UpdatePathQualities(mp.Peer)
-	mp.PathQualityDB.UpdateMetrics()
+	mp.PathQualityDB.UpdatePathQualities(mp.Peer, mp.MetricsInterval)
 	// update DB / collect metrics
 	pathSet, err := mp.PathQualityDB.GetPathSet(mp.Peer)
 	if err != nil {
@@ -293,6 +306,7 @@ func (mp *MPPeerSock) Connect(pathSetWrapper pathselection.CustomPathSelection, 
 	if err != nil {
 		return err
 	}
+	mp.collectMetrics()
 	return nil
 }
 
