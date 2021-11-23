@@ -26,6 +26,7 @@ This task contains the [implementation](https://github.com/netsys-lab/scion-path
 Further information:
 - [x] [Documentation](doc/library.md) of the implemented components and how they work together
 - [x] [Example](doc/library.md#example-multipath-pingpong) of how the library can be used to perform multipath communication
+- [x] [Nix flake repo for scion-path-discovery](https://github.com/ngi-nix/scion-path-discovery) a packaging of scion-path-discovery for NixOS (work in progress)
 
 ## Task 3. Demonstrate library with BitTorrent over SCION
 This task includes the [implementation](https://github.com/netsys-lab/bittorrent-over-scion/releases/tag/implementation) of a demonstrator for the efficient multipath library developed in task 1 and 2 - BitTorrent over SCION - as well as adding a test suite for the library.
