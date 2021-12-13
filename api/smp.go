@@ -65,6 +65,7 @@ type MPPeerSock struct {
 	SelectedPathSet         *pathselection.PathSet
 	Mode                    string
 	Options                 *MPSocketOptions
+	selection               pathselection.CustomPathSelection
 }
 
 //
@@ -153,7 +154,7 @@ func (mp *MPPeerSock) WaitForPeerConnect(sel pathselection.CustomPathSelection) 
 	}
 	log.Debugf("Accepted connection from %s", remote.String())
 	mp.Peer = remote
-
+	mp.selection = sel
 	// Start selection process -> will update DB
 	mp.StartPathSelection(sel, sel == nil)
 	log.Infof("Done path selection")
@@ -230,6 +231,10 @@ func (mp *MPPeerSock) StartPathSelection(sel pathselection.CustomPathSelection, 
 	mp.pathSelection(sel)
 }
 
+func (mp *MPPeerSock) ForcePathSelection() {
+	mp.pathSelection(mp.selection)
+}
+
 //
 //  Actual pathselection implementation
 //
@@ -278,6 +283,7 @@ func (mp *MPPeerSock) Connect(pathSetWrapper pathselection.CustomPathSelection, 
 		opts = options
 	}
 	var err error
+	mp.selection = pathSetWrapper
 	mp.StartPathSelection(pathSetWrapper, opts.NoPeriodicPathSelection)
 	/*selectedPathSet, err := mp.PathQualityDB.GetPathSet(mp.Peer)
 	if err != nil {

@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"encoding/gob"
 	"flag"
-	"fmt"
-	"strings"
 	"time"
 
 	smp "github.com/netsys-lab/scion-path-discovery/api"
@@ -61,37 +59,6 @@ func setLogging() {
 	}
 }
 
-func PathToString(path snet.Path) string {
-	if path == nil {
-		return ""
-	}
-	intfs := path.Metadata().Interfaces
-	if len(intfs) == 0 {
-		return ""
-	}
-	var hops []string
-	intf := intfs[0]
-	hops = append(hops, fmt.Sprintf("%s %s",
-		intf.IA,
-		intf.ID,
-	))
-	for i := 1; i < len(intfs)-1; i += 2 {
-		inIntf := intfs[i]
-		outIntf := intfs[i+1]
-		hops = append(hops, fmt.Sprintf("%s %s %s",
-			inIntf.ID,
-			inIntf.IA,
-			outIntf.ID,
-		))
-	}
-	intf = intfs[len(intfs)-1]
-	hops = append(hops, fmt.Sprintf("%s %s",
-		intf.ID,
-		intf.IA,
-	))
-	return fmt.Sprintf("[%s]", strings.Join(hops, ">"))
-}
-
 func receivePackets(mpSock *smp.MPPeerSock) {
 	go func() {
 		//search for incoming connection. There is only one (until now).
@@ -123,7 +90,7 @@ func sendPackets(mpSock *smp.MPPeerSock) {
 		for {
 			for _, conn := range mpSock.UnderlaySocket.GetConnections() {
 				if conn.GetType() == packets.ConnectionTypes.Outgoing {
-					str := PathToString((*conn.GetPath()).Copy())
+					str := pathselection.PathToString((*conn.GetPath()).Copy())
 
 					var network bytes.Buffer
 					enc := gob.NewEncoder(&network)
@@ -167,7 +134,7 @@ func main() {
 			paths := <-mpSock.OnPathsetChange
 			log.Infof("New Paths available, got %d", len(paths.Paths))
 			for i, path := range paths.Paths {
-				log.Infof("Path %d: %s", i, PathToString(path.Path))
+				log.Infof("Path %d: %s", i, pathselection.PathToString(path.Path))
 			}
 		}
 	}()
@@ -181,7 +148,7 @@ func main() {
 				var str string = ""
 				path := v.GetPath()
 				if path != nil {
-					str = PathToString(*path)
+					str = pathselection.PathToString(*path)
 				}
 
 				log.Infof("Connection %d is %s, path %s", i, packets.ConnTypeToString(v.GetType()), str)

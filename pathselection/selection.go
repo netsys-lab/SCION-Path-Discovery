@@ -221,3 +221,46 @@ func UnwrapPathset(pathset PathSet) []snet.Path {
 
 	return paths
 }
+
+func PathToString(path snet.Path) string {
+	if path == nil {
+		return ""
+	}
+	intfs := path.Metadata().Interfaces
+	if len(intfs) == 0 {
+		return ""
+	}
+	var hops []string
+	intf := intfs[0]
+	hops = append(hops, fmt.Sprintf("%s %s",
+		intf.IA,
+		intf.ID,
+	))
+	for i := 1; i < len(intfs)-1; i += 2 {
+		inIntf := intfs[i]
+		outIntf := intfs[i+1]
+		hops = append(hops, fmt.Sprintf("%s %s %s",
+			inIntf.ID,
+			inIntf.IA,
+			outIntf.ID,
+		))
+	}
+	intf = intfs[len(intfs)-1]
+	hops = append(hops, fmt.Sprintf("%s %s",
+		intf.ID,
+		intf.IA,
+	))
+	return fmt.Sprintf("[%s]", strings.Join(hops, ">"))
+}
+
+type PQ []PathQuality
+
+func (pq PQ) FindIndexByPathString(s string) int {
+	for i, v := range pq {
+		if s == PathToString(v.Path) {
+			return i
+		}
+	}
+
+	return -1
+}
