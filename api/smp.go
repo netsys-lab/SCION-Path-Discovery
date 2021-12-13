@@ -65,8 +65,8 @@ type MPPeerSock struct {
 	SelectedPathSet         *pathselection.PathSet
 	Mode                    string
 	Options                 *MPSocketOptions
-	selection               pathselection.CustomPathSelection
 	MetricsInterval         time.Duration
+	selection               pathselection.CustomPathSelection
 }
 
 //
