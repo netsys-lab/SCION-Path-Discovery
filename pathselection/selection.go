@@ -253,9 +253,7 @@ func PathToString(path snet.Path) string {
 	return fmt.Sprintf("[%s]", strings.Join(hops, ">"))
 }
 
-type PQ []PathQuality
-
-func (pq PQ) FindIndexByPathString(s string) int {
+func FindIndexByPathString(pq []PathQuality, s string) int {
 	for i, v := range pq {
 		if s == PathToString(v.Path) {
 			return i
