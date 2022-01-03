@@ -1,6 +1,8 @@
 package packets
 
-import "time"
+import (
+	"time"
+)
 
 // Some Metrics to start with
 // Will be extended later
@@ -27,9 +29,17 @@ func NewPathMetrics(updateInterval time.Duration) *PathMetrics {
 }
 
 func (m *PathMetrics) Tick() {
-	fac := int64(1000 / m.UpdateInterval)
+
+	// TODO: FIx this
+	if m.UpdateInterval == 0 {
+		m.UpdateInterval = 1000 * time.Millisecond
+	}
+
+	fac := int64((1000 * time.Millisecond) / m.UpdateInterval)
 	readBw := (m.ReadBytes - m.LastReadBytes) * fac
 	writeBw := (m.WrittenBytes - m.LastWrittenBytes) * fac
 	m.ReadBandwidth = append(m.ReadBandwidth, readBw)
 	m.WrittenBandwidth = append(m.WrittenBandwidth, writeBw)
+	m.LastReadBytes = m.ReadBytes
+	m.LastWrittenBytes = m.WrittenBytes
 }

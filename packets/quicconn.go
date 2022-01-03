@@ -88,19 +88,24 @@ func (c *returnPathConn) WriteTo(p []byte, addr net.Addr) (int, error) {
 
 // TODO: Implement SCION/QUIC here
 type QUICReliableConn struct { // Former: MonitoredConn
-	BasicConn
-	internalConn quic.Stream
-	listener     quic.Listener
-	session      quic.Session
-	path         *snet.Path
-	peer         string
-	remote       *snet.UDPAddr
-	state        int // See Connection States
-	metrics      PathMetrics
-	local        *snet.UDPAddr
-	Ready        chan bool
-	closed       bool
-	id           string
+	internalConn     quic.Stream
+	listener         quic.Listener
+	session          quic.Session
+	path             *snet.Path
+	peer             string
+	remote           *snet.UDPAddr
+	state            int // See Connection States
+	metrics          PathMetrics
+	local            *snet.UDPAddr
+	Ready            chan bool
+	closed           bool
+	id               string
+	NoReturnPathConn bool
+}
+
+func (qc *QUICReliableConn) GetState() int {
+	log.Debugf("Returning State %d", qc.state)
+	return qc.state
 }
 
 // This simply wraps conn.Read and will later collect metrics
@@ -219,6 +224,11 @@ func (qc *QUICReliableConn) Close() error {
 	return qc.internalConn.Close()
 }
 
+func (qc *QUICReliableConn) MarkAsClosed() error {
+	qc.state = ConnectionStates.Closed
+	return nil
+}
+
 func (qc *QUICReliableConn) AcceptStream() (quic.Stream, error) {
 	log.Debugf("Accepting on quic %s", qc.listener.Addr())
 	session, err := qc.listener.Accept(context.Background())
@@ -247,10 +257,17 @@ func (qc *QUICReliableConn) Listen(addr snet.UDPAddr) error {
 		Port: addr.Host.Port,
 	}
 	qc.local = &addr
-	sconn, err := Listen(&udpAddr) // appnet.Listen(&udpAddr)
-	if err != nil {
-		return err
+	var sconn net.PacketConn
+	var err error
+	if qc.NoReturnPathConn {
+		sconn, err = appnet.Listen(&udpAddr)
+	} else {
+		sconn, err = Listen(&udpAddr) // appnet.Listen(&udpAddr)
+		if err != nil {
+			return err
+		}
 	}
+
 	listener, err := quic.Listen(sconn, &tls.Config{
 		Certificates: appquic.GetDummyTLSCerts(),
 		NextProtos:   []string{"scion-filetransfer"},

@@ -82,6 +82,9 @@ func (db *InMemoryPathQualityDatabase) UpdateMetrics() {
 	// TODO: Do listen Cons have paths?
 	for _, v := range db.connections {
 
+		connMetrics := v.GetMetrics()
+		connMetrics.Tick()
+
 		if v.GetRemote() == nil {
 			continue
 		}
@@ -90,24 +93,26 @@ func (db *InMemoryPathQualityDatabase) UpdateMetrics() {
 			log.Fatal(err)
 		}
 
-		connMetrics := v.GetMetrics()
-		connMetrics.Tick()
-		pathQuality.metrics = *connMetrics
+		// Incoming conn may not have path
+		if pathQuality != nil {
+			pathQuality.metrics = *connMetrics
 
-		var maxBw int64 = 0
-		for _, v := range pathQuality.metrics.ReadBandwidth {
-			if v > maxBw {
-				maxBw = v
+			var maxBw int64 = 0
+			for _, v := range pathQuality.metrics.ReadBandwidth {
+				if v > maxBw {
+					maxBw = v
+				}
 			}
+
+			for _, v := range pathQuality.metrics.WrittenBandwidth {
+				if v > maxBw {
+					maxBw = v
+				}
+			}
+
+			pathQuality.MaxBandwidth = maxBw
 		}
 
-		for _, v := range pathQuality.metrics.WrittenBandwidth {
-			if v > maxBw {
-				maxBw = v
-			}
-		}
-
-		pathQuality.MaxBandwidth = maxBw
 	}
 }
 
@@ -119,14 +124,15 @@ func (db *InMemoryPathQualityDatabase) getPathQuality(addr *snet.UDPAddr, path *
 	}
 
 	for _, v := range pathSet.Paths {
-		if bytes.Compare(v.Path.Path().Raw, (*path).Path().Raw) == 0 {
+		if path != nil && bytes.Compare(v.Path.Path().Raw, (*path).Path().Raw) == 0 {
 			pathQuality = &v
 		}
 	}
 
-	if pathQuality == nil {
-		return nil, errors.New(fmt.Sprintf("No PathQuality found for path"))
-	}
+	// TODO: Warning
+	// if pathQuality == nil {
+	//	return nil, errors.New(fmt.Sprintf("No PathQuality found for path"))
+	//}
 
 	return pathQuality, nil
 

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/netsys-lab/scion-path-discovery/packets"
+	lookup "github.com/netsys-lab/scion-path-discovery/pathlookup"
 	"github.com/netsys-lab/scion-path-discovery/pathselection"
 	"github.com/netsys-lab/scion-path-discovery/socket"
 	"github.com/scionproto/scion/go/lib/snet"
@@ -84,7 +85,7 @@ func NewMPPeerSock(local string, peer *snet.UDPAddr, options *MPSocketOptions) *
 		PathQualityDB:       pathselection.NewInMemoryPathQualityDatabase(),
 		OnConnectionsChange: make(chan []packets.UDPConn),
 		Options:             defaultSocketOptions,
-		MetricsInterval:     100 * time.Millisecond,
+		MetricsInterval:     1000 * time.Millisecond,
 	}
 
 	if options != nil {
@@ -201,13 +202,20 @@ func (mp *MPPeerSock) WaitForPeerConnect(sel pathselection.CustomPathSelection) 
 }
 
 func (mp *MPPeerSock) collectMetrics() {
-
+	log.Errorf("collectMetrics")
 	ticker := time.NewTicker(mp.MetricsInterval)
 	go func() {
-		<-ticker.C
-		mp.PathQualityDB.UpdateMetrics()
+		for {
+			<-ticker.C
+			mp.PathQualityDB.UpdateMetrics()
+		}
+
 	}()
 
+}
+
+func (mp *MPPeerSock) GetAvailablePaths() ([]snet.Path, error) {
+	return lookup.PathLookup(mp.Peer.String())
 }
 
 //
@@ -248,6 +256,10 @@ func (mp *MPPeerSock) StartPathSelection(sel pathselection.CustomPathSelection, 
 
 func (mp *MPPeerSock) ForcePathSelection() {
 	mp.pathSelection(mp.selection)
+	mp.DialAll(mp.SelectedPathSet, &socket.ConnectOptions{
+		SendAddrPacket:      false,
+		DontWaitForIncoming: true,
+	})
 }
 
 //
@@ -307,7 +319,10 @@ func (mp *MPPeerSock) Connect(pathSetWrapper pathselection.CustomPathSelection, 
 	if err != nil {
 		return err
 	}
-	mp.collectMetrics()
+	if !opts.NoMetricsCollection {
+		mp.collectMetrics()
+	}
+
 	return nil
 }
 
@@ -427,6 +442,9 @@ func NewMPListener(local string, options *MPListenerOptions) *MPListener {
 		listener.socket = socket.NewQUICSocket(local, &socket.SockOptions{
 			PathSelectionResponsibility: "CLIENT",
 		})
+		qs, _ := listener.socket.(*socket.QUICSocket)
+		// Support incoming connections from multiple remote peers
+		qs.NoReturnPathConn = true
 		break
 	}
 	return listener

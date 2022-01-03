@@ -46,6 +46,7 @@ type QUICSocket struct {
 	dialConns            []*packets.QUICReliableConn
 	acceptedConns        chan []*packets.QUICReliableConn
 	options              *SockOptions
+	NoReturnPathConn     bool
 }
 
 func NewQUICSocket(local string, opts *SockOptions) *QUICSocket {
@@ -69,7 +70,9 @@ func (s *QUICSocket) Listen() error {
 	}
 
 	s.localAddr = lAddr
-	conn := &packets.QUICReliableConn{}
+	conn := &packets.QUICReliableConn{
+		NoReturnPathConn: s.NoReturnPathConn,
+	}
 	s.listenConns = append(s.listenConns, conn)
 	err = conn.Listen(*s.localAddr)
 
@@ -291,7 +294,34 @@ func (s *QUICSocket) DialAll(remote snet.UDPAddr, path []pathselection.PathQuali
 	default:
 		// s.listenConns[0]
 	}
+	dialConns := make([]*packets.QUICReliableConn, 0)
+	for _, v := range conns {
+		q, ok := v.(*packets.QUICReliableConn)
+		if ok {
+			dialConns = append(dialConns, q)
+		}
+	}
 
+	for _, v := range s.dialConns {
+		connFound := false
+		for _, c := range dialConns {
+			if c.GetId() == v.GetId() {
+				connFound = true
+			}
+		}
+
+		// Gracefully close connections that are not used anymore
+		// Meaning we set them to closed, so that th
+		if !connFound {
+			err := v.MarkAsClosed()
+			log.Debugf("Marking conn with id %s closed due to no further usage", v.GetId())
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	s.dialConns = dialConns
 	return conns, nil
 }
 
