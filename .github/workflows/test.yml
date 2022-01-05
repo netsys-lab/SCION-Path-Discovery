@@ -18,13 +18,13 @@ jobs:
       run: |
             # Get scion version from go modules. The sed command extracts the
             # replacement if one is specified in the go.mod file.
-            # scion_mod_version=$(go list -m github.com/scionproto/scion | sed -s 's/.*\s*=>\s*//')
-            scion_mod_version="github.com/scionproto/scion v0.6.1-0.20210929154253-764d6e2afe47"
+            scion_mod_version=$(go list -m github.com/scionproto/scion | sed -s 's/.*\s*=>\s*//')
+            scion_repo=https://${scion_mod_version% *}.git
             # Extract the commit hash, which is the last part of the go modules version
             scion_commit=${scion_mod_version##*[ -]}
             git clone ${scion_repo} ~/scion
             cd ~/scion
-            git checkout --quiet ${scion_commit} 
+            # git checkout --quiet ${scion_commit} 
     - name: Build SCION
       run: |
             # Log tool versions provided by CircleCi
