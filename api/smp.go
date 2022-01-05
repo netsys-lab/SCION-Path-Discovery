@@ -68,7 +68,7 @@ type MPPeerSock struct {
 	Options                 *MPSocketOptions
 	MetricsInterval         time.Duration
 	selection               pathselection.CustomPathSelection
-	MetricsInterval         time.Duration
+	PathSelectionInterval   time.Duration
 }
 
 //
@@ -78,14 +78,15 @@ type MPPeerSock struct {
 func NewMPPeerSock(local string, peer *snet.UDPAddr, options *MPSocketOptions) *MPPeerSock {
 
 	sock := &MPPeerSock{
-		Peer:                peer,
-		Local:               local,
-		OnPathsetChange:     make(chan pathselection.PathSet),
-		PacketScheduler:     &packets.SampleFirstPathScheduler{},
-		PathQualityDB:       pathselection.NewInMemoryPathQualityDatabase(),
-		OnConnectionsChange: make(chan []packets.UDPConn),
-		Options:             defaultSocketOptions,
-		MetricsInterval:     1000 * time.Millisecond,
+		Peer:                  peer,
+		Local:                 local,
+		OnPathsetChange:       make(chan pathselection.PathSet),
+		PacketScheduler:       &packets.SampleFirstPathScheduler{},
+		PathQualityDB:         pathselection.NewInMemoryPathQualityDatabase(),
+		OnConnectionsChange:   make(chan []packets.UDPConn),
+		Options:               defaultSocketOptions,
+		MetricsInterval:       1000 * time.Millisecond,
+		PathSelectionInterval: 5 * time.Second,
 	}
 
 	if options != nil {
@@ -236,7 +237,7 @@ func (mp *MPPeerSock) StartPathSelection(sel pathselection.CustomPathSelection, 
 	}
 
 	if !noPeriodicPathSelection {
-		ticker := time.NewTicker(5 * time.Second)
+		ticker := time.NewTicker(mp.PathSelectionInterval)
 		go func() {
 			for range ticker.C {
 				if mp.Peer != nil {
