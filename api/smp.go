@@ -162,7 +162,7 @@ func (mp *MPPeerSock) WaitForPeerConnect(sel pathselection.CustomPathSelection) 
 	mp.selection = sel
 	// Start selection process -> will update DB
 	mp.StartPathSelection(sel, sel == nil)
-	log.Infof("Done path selection")
+	log.Debugf("Done path selection")
 	// wait until first signal on channel
 	// selectedPathSet := <-mp.OnPathsetChange
 	// time.Sleep(1 * time.Second)
@@ -203,7 +203,6 @@ func (mp *MPPeerSock) WaitForPeerConnect(sel pathselection.CustomPathSelection) 
 }
 
 func (mp *MPPeerSock) collectMetrics() {
-	log.Errorf("collectMetrics")
 	ticker := time.NewTicker(mp.MetricsInterval)
 	go func() {
 		for {

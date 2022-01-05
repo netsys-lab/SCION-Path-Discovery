@@ -81,7 +81,7 @@ func (s *QUICSocket) Listen() error {
 
 func (s *QUICSocket) WaitForIncomingConn() (packets.UDPConn, error) {
 	if s.options == nil || !s.options.MultiportMode {
-		log.Infof("Waiting for new connection")
+		log.Debugf("Waiting for new connection")
 		stream, err := s.listenConns[0].AcceptStream()
 		if err != nil {
 			log.Fatalf("QUIC Accept err %s", err.Error())
@@ -90,19 +90,15 @@ func (s *QUICSocket) WaitForIncomingConn() (packets.UDPConn, error) {
 		log.Debugf("Accepted new Stream on listen socket")
 
 		bts := make([]byte, packets.PACKET_SIZE)
-		n, err := stream.Read(bts)
-
-		log.Debugf("Got %d bytes from new accepted stream", n)
+		_, err = stream.Read(bts)
 
 		if s.listenConns[0].GetInternalConn() == nil {
-			log.Debugf("Set stream to listen conn")
 			s.listenConns[0].SetStream(stream)
 			select {
 			case s.listenConns[0].Ready <- true:
 			default:
 			}
 
-			log.Debugf("Set connection ready")
 			return s.listenConns[0], nil
 		} else {
 			newConn := &packets.QUICReliableConn{}
@@ -154,7 +150,6 @@ func (s *QUICSocket) WaitForDialIn() (*snet.UDPAddr, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Debugf("Dialed In")
 
 	s.listenConns[0].SetStream(stream)
 
@@ -162,8 +157,6 @@ func (s *QUICSocket) WaitForDialIn() (*snet.UDPAddr, error) {
 	case s.listenConns[0].Ready <- true:
 	default:
 	}
-
-	log.Debugf("Set connection ready")
 
 	_, err = stream.Read(bts)
 	if err != nil {
@@ -181,17 +174,13 @@ func (s *QUICSocket) WaitForDialIn() (*snet.UDPAddr, error) {
 	log.Debugf("Waiting for %d more connections", p.NumPaths-1)
 
 	for i := 1; i < p.NumPaths; i++ {
-		log.Debugf("Got into loop for %d and %d", i, p.NumPaths)
 		_, err := s.WaitForIncomingConn()
-		log.Debugf("Having incoming conn")
 		if err != nil {
 			return nil, err
 		}
 		log.Debugf("Dialed In %d of %d", i, p.NumPaths)
 	}
 
-	// s.listenConns[0].SetPath(&p.Path)
-	// log.Debugf("Got path from connection %v", p.Path)
 	addr := p.Addr
 	return &addr, nil
 }
@@ -206,7 +195,6 @@ func (s *QUICSocket) Dial(remote snet.UDPAddr, path snet.Path, options DialOptio
 			return nil, err
 		}
 
-		// log.Debugf("Sending addr packet %d for conn %p", options.SendAddrPacket, &conn)
 		if options.SendAddrPacket {
 			var network bytes.Buffer
 			enc := gob.NewEncoder(&network)
@@ -290,7 +278,6 @@ func (s *QUICSocket) DialAll(remote snet.UDPAddr, path []pathselection.PathQuali
 
 	select {
 	case s.listenConns[0].Ready <- true:
-		log.Debugf("Set Connection Ready")
 	default:
 		// s.listenConns[0]
 	}
