@@ -128,6 +128,11 @@ func (sc *SCIONConn) GetMetrics() *PathMetrics {
 	return &sc.metrics
 }
 
+func (sc *SCIONConn) MarkAsClosed() error {
+	sc.state = ConnectionStates.Closed
+	return nil
+}
+
 func (sc *SCIONConn) GetPath() *snet.Path {
 	return sc.path
 }

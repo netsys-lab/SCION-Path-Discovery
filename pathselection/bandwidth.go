@@ -11,8 +11,8 @@ func (pathSet byBandwidth) Swap(i, j int) {
 }
 
 func (pathSet byBandwidth) Less(i, j int) bool {
-	// todo
-	return false
+	return pathSet[i].MaxBandwidth < pathSet[j].MaxBandwidth
+
 }
 
 // GetPathHighBandwidth Select the shortest paths from given path array

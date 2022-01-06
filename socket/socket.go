@@ -10,6 +10,7 @@ type ConnectOptions struct {
 	SendAddrPacket          bool
 	DontWaitForIncoming     bool
 	NoPeriodicPathSelection bool
+	NoMetricsCollection     bool
 }
 
 type SockOptions struct {

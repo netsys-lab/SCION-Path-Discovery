@@ -59,7 +59,6 @@ func (c *returnPathConn) ReadFrom(p []byte) (int, net.Addr, error) {
 	}
 	if err == nil {
 		if saddr, ok := addr.(*snet.UDPAddr); ok && c.path == nil {
-			log.Debugf("Setting return path")
 			c.mutex.Lock()
 			defer c.mutex.Unlock()
 			c.path = &returnPath{path: &saddr.Path, nextHop: saddr.NextHop}
@@ -88,19 +87,23 @@ func (c *returnPathConn) WriteTo(p []byte, addr net.Addr) (int, error) {
 
 // TODO: Implement SCION/QUIC here
 type QUICReliableConn struct { // Former: MonitoredConn
-	BasicConn
-	internalConn quic.Stream
-	listener     quic.Listener
-	session      quic.Session
-	path         *snet.Path
-	peer         string
-	remote       *snet.UDPAddr
-	state        int // See Connection States
-	metrics      PathMetrics
-	local        *snet.UDPAddr
-	Ready        chan bool
-	closed       bool
-	id           string
+	internalConn     quic.Stream
+	listener         quic.Listener
+	session          quic.Session
+	path             *snet.Path
+	peer             string
+	remote           *snet.UDPAddr
+	state            int // See Connection States
+	metrics          PathMetrics
+	local            *snet.UDPAddr
+	Ready            chan bool
+	closed           bool
+	id               string
+	NoReturnPathConn bool
+}
+
+func (qc *QUICReliableConn) GetState() int {
+	return qc.state
 }
 
 // This simply wraps conn.Read and will later collect metrics
@@ -159,13 +162,11 @@ func (qc *QUICReliableConn) Dial(addr snet.UDPAddr, path *snet.Path) error {
 	log.Debugf("Opened Stream to %s", addr.String())
 	qc.state = ConnectionStates.Open
 	qc.internalConn = stream
-	log.Debugf("Setting stream %p to conn %p", &qc.internalConn, qc)
 	return nil
 }
 
 // This simply wraps conn.Write and will later collect metrics
 func (qc *QUICReliableConn) Write(b []byte) (int, error) {
-	// log.Debugf("Writing on stream %p of conn %p", &qc.internalConn, qc)
 	n, err := qc.internalConn.Write(b)
 	qc.metrics.WrittenBytes += int64(n)
 	qc.metrics.WrittenPackets++
@@ -219,6 +220,11 @@ func (qc *QUICReliableConn) Close() error {
 	return qc.internalConn.Close()
 }
 
+func (qc *QUICReliableConn) MarkAsClosed() error {
+	qc.state = ConnectionStates.Closed
+	return nil
+}
+
 func (qc *QUICReliableConn) AcceptStream() (quic.Stream, error) {
 	log.Debugf("Accepting on quic %s", qc.listener.Addr())
 	session, err := qc.listener.Accept(context.Background())
@@ -228,12 +234,9 @@ func (qc *QUICReliableConn) AcceptStream() (quic.Stream, error) {
 	log.Debugf("Got session on quic %s", qc.listener.Addr())
 
 	stream, err := session.AcceptStream(context.Background())
-	log.Debugf("ASÖLKD on quic %s", qc.listener.Addr())
 	if err != nil {
 		return nil, err
 	}
-
-	log.Debugf("Accepted on quic %s with %p", qc.listener.Addr(), qc)
 
 	// qc.internalConn = stream
 
@@ -247,10 +250,17 @@ func (qc *QUICReliableConn) Listen(addr snet.UDPAddr) error {
 		Port: addr.Host.Port,
 	}
 	qc.local = &addr
-	sconn, err := Listen(&udpAddr) // appnet.Listen(&udpAddr)
-	if err != nil {
-		return err
+	var sconn net.PacketConn
+	var err error
+	if qc.NoReturnPathConn {
+		sconn, err = appnet.Listen(&udpAddr)
+	} else {
+		sconn, err = Listen(&udpAddr) // appnet.Listen(&udpAddr)
+		if err != nil {
+			return err
+		}
 	}
+
 	listener, err := quic.Listen(sconn, &tls.Config{
 		Certificates: appquic.GetDummyTLSCerts(),
 		NextProtos:   []string{"scion-filetransfer"},
@@ -261,8 +271,6 @@ func (qc *QUICReliableConn) Listen(addr snet.UDPAddr) error {
 	if err != nil {
 		return err
 	}
-
-	log.Debugf("Listen on quic %s wtih scion %s", listener.Addr(), sconn.LocalAddr())
 
 	qc.listener = listener
 	qc.state = ConnectionStates.Pending

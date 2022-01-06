@@ -80,6 +80,7 @@ type UDPConn interface {
 	GetType() int
 	GetId() string
 	SetId(string)
+	MarkAsClosed() error
 }
 
 type TransportConstructor func() UDPConn

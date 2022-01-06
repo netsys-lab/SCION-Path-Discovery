@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/netsys-lab/scion-path-discovery/packets"
+	lookup "github.com/netsys-lab/scion-path-discovery/pathlookup"
 	"github.com/netsys-lab/scion-path-discovery/pathselection"
 	"github.com/netsys-lab/scion-path-discovery/socket"
 	"github.com/scionproto/scion/go/lib/snet"
@@ -65,7 +66,9 @@ type MPPeerSock struct {
 	SelectedPathSet         *pathselection.PathSet
 	Mode                    string
 	Options                 *MPSocketOptions
+	MetricsInterval         time.Duration
 	selection               pathselection.CustomPathSelection
+	PathSelectionInterval   time.Duration
 }
 
 //
@@ -75,13 +78,15 @@ type MPPeerSock struct {
 func NewMPPeerSock(local string, peer *snet.UDPAddr, options *MPSocketOptions) *MPPeerSock {
 
 	sock := &MPPeerSock{
-		Peer:                peer,
-		Local:               local,
-		OnPathsetChange:     make(chan pathselection.PathSet),
-		PacketScheduler:     &packets.SampleFirstPathScheduler{},
-		PathQualityDB:       pathselection.NewInMemoryPathQualityDatabase(),
-		OnConnectionsChange: make(chan []packets.UDPConn),
-		Options:             defaultSocketOptions,
+		Peer:                  peer,
+		Local:                 local,
+		OnPathsetChange:       make(chan pathselection.PathSet),
+		PacketScheduler:       &packets.SampleFirstPathScheduler{},
+		PathQualityDB:         pathselection.NewInMemoryPathQualityDatabase(),
+		OnConnectionsChange:   make(chan []packets.UDPConn),
+		Options:               defaultSocketOptions,
+		MetricsInterval:       1000 * time.Millisecond,
+		PathSelectionInterval: 5 * time.Second,
 	}
 
 	if options != nil {
@@ -157,7 +162,7 @@ func (mp *MPPeerSock) WaitForPeerConnect(sel pathselection.CustomPathSelection) 
 	mp.selection = sel
 	// Start selection process -> will update DB
 	mp.StartPathSelection(sel, sel == nil)
-	log.Infof("Done path selection")
+	log.Debugf("Done path selection")
 	// wait until first signal on channel
 	// selectedPathSet := <-mp.OnPathsetChange
 	// time.Sleep(1 * time.Second)
@@ -166,7 +171,9 @@ func (mp *MPPeerSock) WaitForPeerConnect(sel pathselection.CustomPathSelection) 
 		err = mp.DialAll(mp.SelectedPathSet, &socket.ConnectOptions{
 			SendAddrPacket: false,
 		})
+		mp.collectMetrics()
 	} else {
+		mp.collectMetrics()
 		go func() {
 			conns := mp.UnderlaySocket.GetConnections()
 			mp.PacketScheduler.SetConnections(conns)
@@ -195,6 +202,22 @@ func (mp *MPPeerSock) WaitForPeerConnect(sel pathselection.CustomPathSelection) 
 	return remote, err
 }
 
+func (mp *MPPeerSock) collectMetrics() {
+	ticker := time.NewTicker(mp.MetricsInterval)
+	go func() {
+		for {
+			<-ticker.C
+			mp.PathQualityDB.UpdateMetrics()
+		}
+
+	}()
+
+}
+
+func (mp *MPPeerSock) GetAvailablePaths() ([]snet.Path, error) {
+	return lookup.PathLookup(mp.Peer.String())
+}
+
 //
 // Performs the first pathselection run and if noPeriodicPathSelection is false, also starts the cyclic pathselection
 //
@@ -213,7 +236,7 @@ func (mp *MPPeerSock) StartPathSelection(sel pathselection.CustomPathSelection, 
 	}
 
 	if !noPeriodicPathSelection {
-		ticker := time.NewTicker(5 * time.Second)
+		ticker := time.NewTicker(mp.PathSelectionInterval)
 		go func() {
 			for range ticker.C {
 				if mp.Peer != nil {
@@ -233,14 +256,17 @@ func (mp *MPPeerSock) StartPathSelection(sel pathselection.CustomPathSelection, 
 
 func (mp *MPPeerSock) ForcePathSelection() {
 	mp.pathSelection(mp.selection)
+	mp.DialAll(mp.SelectedPathSet, &socket.ConnectOptions{
+		SendAddrPacket:      false,
+		DontWaitForIncoming: true,
+	})
 }
 
 //
 //  Actual pathselection implementation
 //
 func (mp *MPPeerSock) pathSelection(sel pathselection.CustomPathSelection) {
-	mp.PathQualityDB.UpdatePathQualities(mp.Peer)
-	mp.PathQualityDB.UpdateMetrics()
+	mp.PathQualityDB.UpdatePathQualities(mp.Peer, mp.MetricsInterval)
 	// update DB / collect metrics
 	pathSet, err := mp.PathQualityDB.GetPathSet(mp.Peer)
 	if err != nil {
@@ -293,6 +319,10 @@ func (mp *MPPeerSock) Connect(pathSetWrapper pathselection.CustomPathSelection, 
 	if err != nil {
 		return err
 	}
+	if !opts.NoMetricsCollection {
+		mp.collectMetrics()
+	}
+
 	return nil
 }
 
@@ -412,6 +442,9 @@ func NewMPListener(local string, options *MPListenerOptions) *MPListener {
 		listener.socket = socket.NewQUICSocket(local, &socket.SockOptions{
 			PathSelectionResponsibility: "CLIENT",
 		})
+		qs, _ := listener.socket.(*socket.QUICSocket)
+		// Support incoming connections from multiple remote peers
+		qs.NoReturnPathConn = true
 		break
 	}
 	return listener
