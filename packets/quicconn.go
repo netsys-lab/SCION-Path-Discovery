@@ -103,7 +103,6 @@ type QUICReliableConn struct { // Former: MonitoredConn
 }
 
 func (qc *QUICReliableConn) GetState() int {
-	log.Debugf("Returning State %d", qc.state)
 	return qc.state
 }
 
