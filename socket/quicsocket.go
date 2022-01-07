@@ -2,8 +2,9 @@ package socket
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/base32"
 	"encoding/gob"
-	"math/rand"
 
 	"github.com/netsys-lab/scion-path-discovery/packets"
 	"github.com/netsys-lab/scion-path-discovery/pathselection"
@@ -17,25 +18,17 @@ var _ packets.UDPConn = (*packets.QUICReliableConn)(nil)
 var _ UnderlaySocket = (*QUICSocket)(nil)
 
 type DialPacketQuic struct {
-	Addr snet.UDPAddr
-	// Path snet.Path
+	Addr     snet.UDPAddr
 	NumPaths int
 }
 
-// TODO: extend this further. It may be useful to use more than
-// one native UDP socket due to performance limitations
-//type Socket interface {
-//	net.Conn
-//}
-
-const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
-func RandStringBytes(n int) string {
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+func RandStringBytes(length int) string {
+	randomBytes := make([]byte, 32)
+	_, err := rand.Read(randomBytes)
+	if err != nil {
+		panic(err)
 	}
-	return string(b)
+	return base32.StdEncoding.EncodeToString(randomBytes)[:length]
 }
 
 type QUICSocket struct {
