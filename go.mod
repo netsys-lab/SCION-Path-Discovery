@@ -5,7 +5,7 @@ go 1.16
 require (
 	github.com/lucas-clemente/quic-go v0.21.1
 	github.com/netsec-ethz/scion-apps v0.3.1-0.20210924130723-be84cbd98c1f
-	github.com/netsys-lab/scion-optimized-connection v0.4.2-0.20220107120306-d0549f6ee0ff
+	github.com/netsys-lab/scion-optimized-connection v0.4.2-0.20220107124242-cc4b4825db7f
 	github.com/scionproto/scion v0.6.0
-	github.com/sirupsen/logrus v1.6.0
+	github.com/sirupsen/logrus v1.8.1
 )

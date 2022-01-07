@@ -220,8 +220,6 @@ github.com/julienschmidt/httprouter v1.2.0/go.mod h1:SYymIcj16QtmaHHD7aYtjjsJG7V
 github.com/kisielk/errcheck v1.1.0/go.mod h1:EZBBE59ingxPouuu3KfxchcWSUPOHkagtvWXihfKN4Q=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
-github.com/konsorten/go-windows-terminal-sequences v1.0.3 h1:CE8S1cTafDpPvMhIxNJKvHsGVBgn1xWYf1NbHQhywc8=
-github.com/konsorten/go-windows-terminal-sequences v1.0.3/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
 github.com/kormat/fmt15 v0.0.0-20181112140556-ee69fecb2656/go.mod h1:8fpYQL5jskFnAq4zE2UpspqEVHuTjurptCxHPpdoBgM=
 github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515/go.mod h1:+0opPa2QZZtGFBFZlji/RkVcI2GknAs/DXo4wKdlNEc=
 github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORNo=
@@ -297,8 +295,8 @@ github.com/netsec-ethz/rains v0.2.0 h1:i+z8ws/d56U0XoqVjom4OFfXkUYK1utXrKPPiGDbd
 github.com/netsec-ethz/rains v0.2.0/go.mod h1:NrbQhiP83DBH2ZsCPJb2vCNXbl0BbGMmMJOatL0bavk=
 github.com/netsec-ethz/scion-apps v0.3.1-0.20210924130723-be84cbd98c1f h1:TElJhHXnF7iT/gqxRam4JOWXijAzhpYBC9qWHawxJCY=
 github.com/netsec-ethz/scion-apps v0.3.1-0.20210924130723-be84cbd98c1f/go.mod h1:38N/jVYtBJsjCyztk+vqAcXpzEgJMirmSGzB7w4oCGQ=
-github.com/netsys-lab/scion-optimized-connection v0.4.2-0.20220107120306-d0549f6ee0ff h1:vWyzbSDxY7Af46ZBROZ4qk/65qDZUo3hL1uUqeDbRlQ=
-github.com/netsys-lab/scion-optimized-connection v0.4.2-0.20220107120306-d0549f6ee0ff/go.mod h1:xxEko7Vv/Pbg90qThCPwEhy2R80b1k/bVXogNCXr3t8=
+github.com/netsys-lab/scion-optimized-connection v0.4.2-0.20220107124242-cc4b4825db7f h1:r1foN6U7eOsD+73zBHFNUZO+1BEWu7GkcRZuu1L/gw0=
+github.com/netsys-lab/scion-optimized-connection v0.4.2-0.20220107124242-cc4b4825db7f/go.mod h1:yL9AhbhrOEcoQyg7xJSLEP9TvHw4nrY1mdG0V60MF9M=
 github.com/nxadm/tail v1.4.4 h1:DQuhQpB1tVlglWS2hLQ5OV6B5r8aGxSrPc5Qo6uTN78=
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
 github.com/oklog/oklog v0.3.2/go.mod h1:FCV+B7mhrz4o+ueLpx+KqkyXRGMWOYEvfiXtdGtbWGs=
@@ -417,8 +415,8 @@ github.com/shurcooL/users v0.0.0-20180125191416-49c67e49c537/go.mod h1:QJTqeLYED
 github.com/shurcooL/webdavfs v0.0.0-20170829043945-18c3829fa133/go.mod h1:hKmq5kWdCj2z2KEozexVbfEZIWiTjhE0+UjmZgPqehw=
 github.com/sirupsen/logrus v1.2.0/go.mod h1:LxeOpSwHxABJmUn/MG1IvRgCAasNZTLOkJPxbbu5VWo=
 github.com/sirupsen/logrus v1.4.2/go.mod h1:tLMulIdttU9McNUspp0xgXVQah82FyeX6MwdIuYE2rE=
-github.com/sirupsen/logrus v1.6.0 h1:UBcNElsrwanuuMsnGSlYmtmgbb23qDR5dG+6X6Oo89I=
-github.com/sirupsen/logrus v1.6.0/go.mod h1:7uNnSEd1DgxDLC74fIahvMZmmYsHGZGEOFrfsX/uA88=
+github.com/sirupsen/logrus v1.8.1 h1:dJKuHgqk1NNQlqoA6BTlM1Wf9DOH3NBjQyu0h9+AZZE=
+github.com/sirupsen/logrus v1.8.1/go.mod h1:yWOB1SBYBC5VeMP7gHvWumXLIWorT60ONWic61uBYv0=
 github.com/smartystreets/assertions v0.0.0-20180927180507-b2de0cb4f26d h1:zE9ykElWQ6/NYmHa3jpm/yHnI4xSofP+UP6SpjHcSeM=
 github.com/smartystreets/assertions v0.0.0-20180927180507-b2de0cb4f26d/go.mod h1:OnSkiWE9lh6wB0YB77sQom3nweQdgAjqCqsofrRNTgc=
 github.com/smartystreets/goconvey v1.6.4 h1:fv0U8FUIMPNf1L9lnHLvLhgicrIVChEkdzIKYqbNC9s=
