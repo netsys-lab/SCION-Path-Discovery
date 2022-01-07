@@ -4,8 +4,8 @@ import (
 	"net"
 	"time"
 
-	optimizedconn "github.com/johannwagner/scion-optimized-connection/pkg"
 	"github.com/netsec-ethz/scion-apps/pkg/appnet"
+	optimizedconn "github.com/netsys-lab/scion-optimized-connection/pkg"
 	"github.com/scionproto/scion/go/lib/snet"
 )
 
