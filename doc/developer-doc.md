@@ -38,7 +38,6 @@ The third argument provides options to configure the socket via `MPSocketOptions
 type MPSocketOptions struct {
     // Defines which underlying protocol should be used. 
 	Transport                   string // "QUIC" | "SCION"
-    // TOOD: Remove?
     PathSelectionResponsibility string // "CLIENT" | "SERVER" | "BOTH"
 	// Multipoort lets each connection run over a dedicated port, which significantly improces performance
     MultiportMode               bool
