@@ -3,7 +3,6 @@ package pathselection
 import (
 	"bytes"
 	"context"
-	"crypto/sha1"
 	"crypto/sha256"
 	"errors"
 	"fmt"
@@ -218,7 +217,7 @@ func (db *InMemoryPathQualityDatabase) UpdatePathQualities(addr *snet.UDPAddr, m
 			pathQualities = append(pathQualities, *cachedPathQuality)
 		} else {
 			// TODO: Add local addr in hashing to support multiple conns over the same path
-			h := sha1.New()
+			h := sha256.New()
 			h.Write(path.Path().Raw)
 			bs := h.Sum(nil)
 			id := fmt.Sprintf("%x", bs)

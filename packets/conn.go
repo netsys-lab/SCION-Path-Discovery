@@ -6,9 +6,8 @@ import (
 	"github.com/scionproto/scion/go/lib/snet"
 )
 
-// TODO: Remove to configurable options
 const (
-	PACKET_SIZE = 1400
+	PACKET_SIZE = 1400 // At the moment we work only with normal MTUs, no jumbo frames
 )
 
 func ConnTypeToString(connType int) string {

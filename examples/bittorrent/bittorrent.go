@@ -1,12 +1,8 @@
 package examples
 
-import (
-	"log"
-	"os"
+// Note: This is deprecated, the actual implementation can be found here: https://github.com/netsys-lab/bittorrent-over-scion
 
-	smp "github.com/netsys-lab/scion-path-discovery/api"
-)
-
+/*
 // This is a Bittorrent specific abstraction which will later be put
 // into Bittorrent code. It should only present how the smp API
 // could be integrated into Bittorrent.
@@ -118,5 +114,5 @@ func main() {
 			peerIndex = 0
 		}
 	}
-
 }
+*/
