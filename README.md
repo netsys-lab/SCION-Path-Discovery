@@ -40,8 +40,8 @@ This task consists of performance measurements for different multipath scenarios
 
 ### Milestone(s)
 - [ ] Evaluation of test results and measurements and process outcome of security quickscan
-    - Outcome of security quickscan: Fixes in [BitTorrent over SCION](https://github.com/netsys-lab/bittorrent-over-scion/pull/5) and [SCION Pathdiscovery](https://github.com/netsys-lab/scion-path-discovery/pull/27) 
-- [ ] Release 1.0 version of the [library](https://github.com/netsys-lab/scion-path-discovery/releases/tag/v0.1.1) and [BitTorrent over SCION](https://github.com/netsys-lab/bittorrent-over-scion/releases/tag/v0.1.0)
+    - Outcome of security quickscan: Fixes in [SCION Pathdiscovery](https://github.com/netsys-lab/scion-path-discovery/pull/27) and [BitTorrent over SCION](https://github.com/netsys-lab/bittorrent-over-scion/pull/5)
+- [ ] Release 1.0 version of the [SCION Pathdiscovery](https://github.com/netsys-lab/scion-path-discovery/releases/tag/v0.1.1) and [BitTorrent over SCION](https://github.com/netsys-lab/bittorrent-over-scion/releases/tag/v0.1.0)
 - [x] [Developer documentation](doc/developer-doc.md)
 
 This work is funded through the NGI0 Discovery Fund, a fund established by NLnet with financial support from the European Commission's Next Generation Internet programme, under the aegis of DG Communications Networks, Content and Technology under grant agreement No 825322 https://nlnet.nl/project/SCION-Swarm/
