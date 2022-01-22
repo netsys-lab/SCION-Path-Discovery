@@ -44,4 +44,8 @@ This task consists of performance measurements for different multipath scenarios
 - [ ] Release 1.0 version of the [SCION Pathdiscovery](https://github.com/netsys-lab/scion-path-discovery/releases/tag/v0.1.1) and [BitTorrent over SCION](https://github.com/netsys-lab/bittorrent-over-scion/releases/tag/v0.1.0)
 - [x] [Developer documentation](doc/developer-doc.md)
 
+### Further Resources
+- [x] [Demonstration video](https://drive.google.com/file/d/1zDdmPvLGh1MXgV5Ne1qezudgTcmd7eVq/view?usp=sharing) of BitTorrent over SCION
+- [x] [Demo seeder](https://github.com/netsys-lab/bittorrent-over-scion/tree/master/demo) that provides sample torrent running in SCIONLab
+
 This work is funded through the NGI0 Discovery Fund, a fund established by NLnet with financial support from the European Commission's Next Generation Internet programme, under the aegis of DG Communications Networks, Content and Technology under grant agreement No 825322 https://nlnet.nl/project/SCION-Swarm/
