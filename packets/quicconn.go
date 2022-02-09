@@ -11,6 +11,7 @@ import (
 	"github.com/lucas-clemente/quic-go"
 	"github.com/netsec-ethz/scion-apps/pkg/appnet"
 	"github.com/netsec-ethz/scion-apps/pkg/appnet/appquic"
+	optimizedconn "github.com/netsys-lab/scion-optimized-connection/pkg"
 	"github.com/scionproto/scion/go/lib/snet"
 	"github.com/scionproto/scion/go/lib/spath"
 
@@ -34,21 +35,24 @@ type returnPath struct {
 
 type returnPathConn struct {
 	net.PacketConn
-	mutex sync.RWMutex
-	path  *returnPath
+	mutex         sync.RWMutex
+	path          *returnPath
+	optimizedConn *optimizedconn.OptimizedSCIONConn
 }
 
 func Listen(listen *net.UDPAddr) (*returnPathConn, error) {
-	sconn, err := appnet.Listen(listen)
+	// sconn, err := appnet.Listen(listen)
+	sconn, err := optimizedconn.Listen(listen)
 	if err != nil {
 		return nil, err
 	}
 	return newReturnPathConn(sconn), nil
 }
 
-func newReturnPathConn(conn *snet.Conn) *returnPathConn {
+func newReturnPathConn(conn *optimizedconn.OptimizedSCIONConn) *returnPathConn {
 	return &returnPathConn{
-		PacketConn: conn,
+		PacketConn:    conn,
+		optimizedConn: conn,
 	}
 }
 
@@ -100,6 +104,7 @@ type QUICReliableConn struct { // Former: MonitoredConn
 	closed           bool
 	id               string
 	NoReturnPathConn bool
+	optimizedConn    *optimizedconn.OptimizedSCIONConn
 }
 
 func (qc *QUICReliableConn) GetState() int {
@@ -123,10 +128,13 @@ func (qc *QUICReliableConn) Read(b []byte) (int, error) {
 
 func (qc *QUICReliableConn) Dial(addr snet.UDPAddr, path *snet.Path) error {
 	qc.state = ConnectionStates.Pending
-	sconn, err := appnet.Listen(nil)
+	// sconn, err := appnet.Listen(nil)
+	sconn, err := optimizedconn.Dial(qc.local.Host, &addr)
 	if err != nil {
 		return err
 	}
+
+	qc.optimizedConn = sconn
 
 	if addr.Path.IsEmpty() {
 		appnet.SetPath(&addr, *path)
@@ -255,10 +263,13 @@ func (qc *QUICReliableConn) Listen(addr snet.UDPAddr) error {
 	if qc.NoReturnPathConn {
 		sconn, err = appnet.Listen(&udpAddr)
 	} else {
-		sconn, err = Listen(&udpAddr) // appnet.Listen(&udpAddr)
+
+		rtc, err := Listen(&udpAddr) // appnet.Listen(&udpAddr)
+		sconn = rtc
 		if err != nil {
 			return err
 		}
+		qc.optimizedConn = rtc.optimizedConn
 	}
 
 	listener, err := quic.Listen(sconn, &tls.Config{
@@ -296,6 +307,7 @@ func (qc *QUICReliableConn) SetPath(path *snet.Path) {
 	qc.path = path
 }
 func (qc *QUICReliableConn) SetRemote(remote *snet.UDPAddr) {
+	qc.optimizedConn.SetRemote(remote)
 	qc.remote = remote
 }
 func (qc *QUICReliableConn) SetLocal(local snet.UDPAddr) {

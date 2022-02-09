@@ -163,7 +163,7 @@ func (s *QUICSocket) WaitForDialIn() (*snet.UDPAddr, error) {
 		return nil, err
 	}
 
-	s.listenConns[0].SetRemote(&p.Addr)
+	// TODO: Add s.listenConns[0].SetRemote(&p.Addr)
 	log.Debugf("Waiting for %d more connections", p.NumPaths-1)
 
 	for i := 1; i < p.NumPaths; i++ {
@@ -208,6 +208,8 @@ func (s *QUICSocket) Dial(remote snet.UDPAddr, path snet.Path, options DialOptio
 		return conn, nil
 	} else {
 		conn := &packets.QUICReliableConn{}
+		nLocal := (*s.localAddr).Copy()
+		nLocal.Host.Port = nLocal.Host.Port
 		conn.SetLocal(*s.localAddr)
 		rem := remote.Copy()
 		rem.Host.Port = remote.Host.Port + i

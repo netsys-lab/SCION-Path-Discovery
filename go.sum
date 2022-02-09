@@ -295,8 +295,6 @@ github.com/netsec-ethz/rains v0.2.0 h1:i+z8ws/d56U0XoqVjom4OFfXkUYK1utXrKPPiGDbd
 github.com/netsec-ethz/rains v0.2.0/go.mod h1:NrbQhiP83DBH2ZsCPJb2vCNXbl0BbGMmMJOatL0bavk=
 github.com/netsec-ethz/scion-apps v0.3.1-0.20210924130723-be84cbd98c1f h1:TElJhHXnF7iT/gqxRam4JOWXijAzhpYBC9qWHawxJCY=
 github.com/netsec-ethz/scion-apps v0.3.1-0.20210924130723-be84cbd98c1f/go.mod h1:38N/jVYtBJsjCyztk+vqAcXpzEgJMirmSGzB7w4oCGQ=
-github.com/netsys-lab/scion-optimized-connection v0.4.2-0.20220107124242-cc4b4825db7f h1:r1foN6U7eOsD+73zBHFNUZO+1BEWu7GkcRZuu1L/gw0=
-github.com/netsys-lab/scion-optimized-connection v0.4.2-0.20220107124242-cc4b4825db7f/go.mod h1:yL9AhbhrOEcoQyg7xJSLEP9TvHw4nrY1mdG0V60MF9M=
 github.com/nxadm/tail v1.4.4 h1:DQuhQpB1tVlglWS2hLQ5OV6B5r8aGxSrPc5Qo6uTN78=
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
 github.com/oklog/oklog v0.3.2/go.mod h1:FCV+B7mhrz4o+ueLpx+KqkyXRGMWOYEvfiXtdGtbWGs=

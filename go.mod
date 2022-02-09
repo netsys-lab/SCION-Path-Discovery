@@ -9,3 +9,5 @@ require (
 	github.com/scionproto/scion v0.6.0
 	github.com/sirupsen/logrus v1.8.1
 )
+
+replace github.com/netsys-lab/scion-optimized-connection => /home/marten/go/src/github.com/netsys-lab/scion-optimized-connection
