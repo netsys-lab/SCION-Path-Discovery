@@ -42,7 +42,7 @@ This task consists of performance measurements for different multipath scenarios
 - [x] Evaluation of test results and measurements and process outcome of security quickscan
     - Evaluation of test results: Presented in our [Multipath BitTorrent over SCION Paper](doc/bittorrent-over-scion.pdf)
     - Outcome of security quickscan: Fixes in [SCION Pathdiscovery](https://github.com/netsys-lab/scion-path-discovery/pull/27) and [BitTorrent over SCION](https://github.com/netsys-lab/bittorrent-over-scion/pull/5)
-- [ ] Release 1.0 version of the [SCION Pathdiscovery](https://github.com/netsys-lab/scion-path-discovery/releases/tag/v0.1.1) and [BitTorrent over SCION](https://github.com/netsys-lab/bittorrent-over-scion/releases/tag/v0.1.0)
+- [x] Release 1.0 version of the [SCION Pathdiscovery](https://github.com/netsys-lab/scion-path-discovery/releases/tag/v1.0.0) and [BitTorrent over SCION](https://github.com/netsys-lab/bittorrent-over-scion/releases/tag/v1.0.0)
 - [x] [Developer documentation](doc/developer-doc.md)
 
 ### Further Resources
