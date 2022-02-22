@@ -179,7 +179,6 @@ func (s *QUICSocket) WaitForDialIn() (*snet.UDPAddr, error) {
 }
 
 func (s *QUICSocket) Dial(remote snet.UDPAddr, path snet.Path, options DialOptions, i int) (packets.UDPConn, error) {
-	// appnet.SetPath(&remote, path)
 	if s.options == nil || !s.options.MultiportMode {
 		conn := &packets.QUICReliableConn{}
 		conn.SetLocal(*s.localAddr)

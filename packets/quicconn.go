@@ -9,8 +9,7 @@ import (
 	"time"
 
 	"github.com/lucas-clemente/quic-go"
-	"github.com/netsec-ethz/scion-apps/pkg/appnet"
-	"github.com/netsec-ethz/scion-apps/pkg/appnet/appquic"
+	"github.com/netsys-lab/scion-path-discovery/sutils"
 	"github.com/scionproto/scion/go/lib/snet"
 	"github.com/scionproto/scion/go/lib/spath"
 
@@ -39,7 +38,7 @@ type returnPathConn struct {
 }
 
 func Listen(listen *net.UDPAddr) (*returnPathConn, error) {
-	sconn, err := appnet.Listen(listen)
+	sconn, err := sutils.Listen(listen)
 	if err != nil {
 		return nil, err
 	}
@@ -123,23 +122,23 @@ func (qc *QUICReliableConn) Read(b []byte) (int, error) {
 
 func (qc *QUICReliableConn) Dial(addr snet.UDPAddr, path *snet.Path) error {
 	qc.state = ConnectionStates.Pending
-	sconn, err := appnet.Listen(nil)
+	sconn, err := sutils.Listen(nil)
 	if err != nil {
 		return err
 	}
 
 	if addr.Path.IsEmpty() {
-		appnet.SetPath(&addr, *path)
+		sutils.SetPath(&addr, path)
 	}
 
 	qc.peer = addr.String()
 	qc.path = path
 
-	host := appnet.MangleSCIONAddr(qc.peer)
+	host := sutils.MangleSCIONAddr(qc.peer)
 	log.Debugf("Dialing to %s and host %s", addr.String(), qc.peer)
 
 	session, err := quic.Dial(sconn, &addr, host, &tls.Config{
-		Certificates:       appquic.GetDummyTLSCerts(),
+		Certificates:       sutils.GetDummyTLSCerts(),
 		NextProtos:         []string{"scion-filetransfer"},
 		InsecureSkipVerify: true,
 	}, &quic.Config{
@@ -253,7 +252,7 @@ func (qc *QUICReliableConn) Listen(addr snet.UDPAddr) error {
 	var sconn net.PacketConn
 	var err error
 	if qc.NoReturnPathConn {
-		sconn, err = appnet.Listen(&udpAddr)
+		sconn, err = sutils.Listen(&udpAddr)
 	} else {
 		sconn, err = Listen(&udpAddr) // appnet.Listen(&udpAddr)
 		if err != nil {
@@ -262,7 +261,7 @@ func (qc *QUICReliableConn) Listen(addr snet.UDPAddr) error {
 	}
 
 	listener, err := quic.Listen(sconn, &tls.Config{
-		Certificates: appquic.GetDummyTLSCerts(),
+		Certificates: sutils.GetDummyTLSCerts(),
 		NextProtos:   []string{"scion-filetransfer"},
 	}, &quic.Config{
 		KeepAlive: true,

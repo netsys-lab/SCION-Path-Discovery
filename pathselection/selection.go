@@ -2,7 +2,6 @@ package pathselection
 
 import (
 	"bytes"
-	"context"
 	"crypto/sha256"
 	"errors"
 	"fmt"
@@ -10,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/netsec-ethz/scion-apps/pkg/appnet"
 	"github.com/netsys-lab/scion-path-discovery/packets"
+	"github.com/netsys-lab/scion-path-discovery/sutils"
 
 	"github.com/scionproto/scion/go/lib/addr"
 	"github.com/scionproto/scion/go/lib/snet"
@@ -205,7 +204,7 @@ func NewInMemoryPathQualityDatabase() *InMemoryPathQualityDatabase {
 }
 
 func (db *InMemoryPathQualityDatabase) UpdatePathQualities(addr *snet.UDPAddr, metricsInterval time.Duration) error {
-	paths, err := appnet.DefNetwork().PathQuerier.Query(context.Background(), addr.IA)
+	paths, err := sutils.QueryPaths(addr)
 	if err != nil {
 		return err
 	}

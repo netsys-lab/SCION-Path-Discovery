@@ -75,7 +75,6 @@ func (s *SCIONSocket) WaitForDialIn() (*snet.UDPAddr, error) {
 }
 
 func (s *SCIONSocket) Dial(remote snet.UDPAddr, path snet.Path, options DialOptions, i int) (packets.UDPConn, error) {
-	// appnet.SetPath(&remote, path)
 	// fmt.Printf("Dialing to %s via %s\n", remote.String(), remote.Path)
 	conn := s.transportConstructor()
 	conn.SetLocal(*s.localAddr)

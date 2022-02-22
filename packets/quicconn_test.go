@@ -4,17 +4,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/netsec-ethz/scion-apps/pkg/appnet"
+	"github.com/netsys-lab/scion-path-discovery/sutils"
 )
 
 func Test_QUICConn(t *testing.T) {
 	t.Run("QUICConn Listen", func(t *testing.T) {
 		conn := QUICConnConstructor()
-		addr, err := appnet.ResolveUDPAddr("1-ff00:0:110,[127.0.0.12]:51000")
+		udpAddr, err := sutils.ResolveUDPAddr("1-ff00:0:110,[127.0.0.12]:51000")
 		if err != nil {
 			t.Error(err)
 		}
-		err = conn.Listen(*addr)
+		err = conn.Listen(*udpAddr)
 		if err != nil {
 			t.Error(err)
 		}
@@ -23,30 +23,31 @@ func Test_QUICConn(t *testing.T) {
 
 	t.Run("QUICConn Read/Write", func(t *testing.T) {
 		conn := &QUICReliableConn{}
-		addr, err := appnet.ResolveUDPAddr("1-ff00:0:110,[127.0.0.12]:54000")
+		rudpAddr, err := sutils.ResolveUDPAddr("1-ff00:0:110,[127.0.0.12]:54000")
 		if err != nil {
 			t.Error(err)
 		}
-		laddr, err := appnet.ResolveUDPAddr("1-ff00:0:110,[127.0.0.12]:55000")
+		ludpAddr, err := sutils.ResolveUDPAddr("1-ff00:0:110,[127.0.0.12]:55000")
 		if err != nil {
 			t.Error(err)
 		}
-		conn.SetLocal(*laddr)
-		err = appnet.SetDefaultPath(addr)
+		conn.SetLocal(*ludpAddr)
+
+		err = sutils.SetDefaultPath(rudpAddr)
 		if err != nil {
 			t.Error(err)
 		}
-		p, err := addr.GetPath()
+		p, err := rudpAddr.GetPath()
 		if err != nil {
 			t.Error(err)
 		}
 
 		listenConn := &QUICReliableConn{}
-		listenConn.Listen(*addr)
+		listenConn.Listen(*ludpAddr)
 
 		go func() {
 			time.Sleep(100 * time.Millisecond)
-			err = conn.Dial(*addr, &p)
+			err = conn.Dial(*rudpAddr, &p)
 			if err != nil {
 				t.Error(err)
 			}

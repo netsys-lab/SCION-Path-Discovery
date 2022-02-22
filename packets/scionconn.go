@@ -4,8 +4,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/netsec-ethz/scion-apps/pkg/appnet"
 	optimizedconn "github.com/netsys-lab/scion-optimized-connection/pkg"
+	"github.com/netsys-lab/scion-path-discovery/sutils"
 	"github.com/scionproto/scion/go/lib/snet"
 )
 
@@ -83,7 +83,7 @@ func (sc *SCIONConn) Write(b []byte) (int, error) {
 }
 
 func (sc *SCIONConn) Dial(addr snet.UDPAddr, path *snet.Path) error {
-	appnet.SetPath(&addr, *path)
+	sutils.SetPath(&addr, path)
 	sc.state = ConnectionStates.Open
 	conn, err := optimizedconn.Dial(sc.local, &addr)
 	if err != nil {
