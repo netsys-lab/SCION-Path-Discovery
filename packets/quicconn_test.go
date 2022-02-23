@@ -10,7 +10,7 @@ import (
 func Test_QUICConn(t *testing.T) {
 	t.Run("QUICConn Listen", func(t *testing.T) {
 		conn := QUICConnConstructor()
-		udpAddr, err := sutils.ResolveUDPAddr("1-ff00:0:110,[127.0.0.12]:51000")
+		udpAddr, err := sutils.ResolveUDPAddr("19-ffaa:1:cf1,[127.0.0.1]:51000")
 		if err != nil {
 			t.Error(err)
 		}
@@ -23,11 +23,11 @@ func Test_QUICConn(t *testing.T) {
 
 	t.Run("QUICConn Read/Write", func(t *testing.T) {
 		conn := &QUICReliableConn{}
-		rudpAddr, err := sutils.ResolveUDPAddr("1-ff00:0:110,[127.0.0.12]:54000")
+		rudpAddr, err := sutils.ResolveUDPAddr("19-ffaa:1:cf1,[127.0.0.1]:54000")
 		if err != nil {
 			t.Error(err)
 		}
-		ludpAddr, err := sutils.ResolveUDPAddr("1-ff00:0:110,[127.0.0.12]:55000")
+		ludpAddr, err := sutils.ResolveUDPAddr("19-ffaa:1:cf1,[127.0.0.1]:55000")
 		if err != nil {
 			t.Error(err)
 		}
@@ -50,6 +50,7 @@ func Test_QUICConn(t *testing.T) {
 			err = conn.Dial(*rudpAddr, &p)
 			if err != nil {
 				t.Error(err)
+				return
 			}
 			conn.Write(make([]byte, 1200))
 		}()

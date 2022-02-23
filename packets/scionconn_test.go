@@ -10,7 +10,7 @@ import (
 func Test_SCIONConn(t *testing.T) {
 	t.Run("SCIONConn Listen", func(t *testing.T) {
 		conn := SCIONTransportConstructor()
-		addr, err := sutils.ResolveUDPAddr("1-ff00:0:110,[127.0.0.12]:41000")
+		addr, err := sutils.ResolveUDPAddr("19-ffaa:1:cf1,[127.0.0.1]:41000")
 		if err != nil {
 			t.Error(err)
 		}
@@ -23,11 +23,11 @@ func Test_SCIONConn(t *testing.T) {
 
 	t.Run("SCIONConn Dial", func(t *testing.T) {
 		conn := SCIONTransportConstructor()
-		addr, err := sutils.ResolveUDPAddr("1-ff00:0:110,[127.0.0.12]:42000")
+		addr, err := sutils.ResolveUDPAddr("19-ffaa:1:cf1,[127.0.0.1]:42000")
 		if err != nil {
 			t.Error(err)
 		}
-		laddr, err := sutils.ResolveUDPAddr("1-ff00:0:110,[127.0.0.12]:43000")
+		laddr, err := sutils.ResolveUDPAddr("19-ffaa:1:cf1,[127.0.0.1]:43000")
 		if err != nil {
 			t.Error(err)
 		}
@@ -51,11 +51,11 @@ func Test_SCIONConn(t *testing.T) {
 
 	t.Run("SCIONConn Read/Write", func(t *testing.T) {
 		conn := SCIONTransportConstructor()
-		addr, err := sutils.ResolveUDPAddr("1-ff00:0:110,[127.0.0.12]:44000")
+		addr, err := sutils.ResolveUDPAddr("19-ffaa:1:cf1,[127.0.0.1]:44000")
 		if err != nil {
 			t.Error(err)
 		}
-		laddr, err := sutils.ResolveUDPAddr("1-ff00:0:110,[127.0.0.12]:45000")
+		laddr, err := sutils.ResolveUDPAddr("19-ffaa:1:cf1,[127.0.0.1]:45000")
 		if err != nil {
 			t.Error(err)
 		}

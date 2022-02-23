@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base32"
 	"encoding/gob"
+	"fmt"
 
 	"github.com/netsys-lab/scion-path-discovery/packets"
 	"github.com/netsys-lab/scion-path-discovery/pathselection"
@@ -242,6 +243,8 @@ func (s *QUICSocket) DialAll(remote snet.UDPAddr, path []pathselection.PathQuali
 	if options.NumPaths == 0 && len(path) > 0 {
 		options.NumPaths = len(path)
 	}
+
+	fmt.Println(len(path))
 
 	conns := make([]packets.UDPConn, 0)
 	for i, v := range path {

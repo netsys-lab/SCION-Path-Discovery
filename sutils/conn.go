@@ -90,6 +90,7 @@ func Listen(listen *net.UDPAddr) (*snet.Conn, error) {
 		}
 		listen = &net.UDPAddr{IP: localIP, Port: listen.Port, Zone: listen.Zone}
 	}
+	fmt.Println(listen)
 	defNetwork := DefNetwork()
 	integrationEnv, _ := os.LookupEnv("SCION_GO_INTEGRATION")
 	if integrationEnv == "1" || integrationEnv == "true" || integrationEnv == "TRUE" {
@@ -161,6 +162,7 @@ func initDefNetwork() error {
 		dispatcher,
 		daemon.RevHandler{Connector: sciondConn},
 	)
+	fmt.Println(hostInLocalAS)
 	defNetwork = Network{Network: n, IA: localIA, hostInLocalAS: hostInLocalAS}
 	return nil
 }

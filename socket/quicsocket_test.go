@@ -9,7 +9,7 @@ import (
 
 func Test_QUICSocket(t *testing.T) {
 	t.Run("QUICSocket Listen", func(t *testing.T) {
-		sock := NewQUICSocket("1-ff00:0:110,[127.0.0.12]:31000", &SockOptions{PathSelectionResponsibility: "server"})
+		sock := NewQUICSocket("19-ffaa:1:cf1,[127.0.0.1]:31000", &SockOptions{PathSelectionResponsibility: "server"})
 		err := sock.Listen()
 		if err != nil {
 			t.Error(err)
@@ -18,7 +18,7 @@ func Test_QUICSocket(t *testing.T) {
 	})
 
 	t.Run("SCIONSocket Listen And Dial", func(t *testing.T) {
-		sock := NewQUICSocket("1-ff00:0:110,[127.0.0.12]:21100", &SockOptions{PathSelectionResponsibility: "server"})
+		sock := NewQUICSocket("19-ffaa:1:cf1,[127.0.0.1]:21100", &SockOptions{PathSelectionResponsibility: "server"})
 		err := sock.Listen()
 		if err != nil {
 			t.Error(err)
@@ -26,7 +26,7 @@ func Test_QUICSocket(t *testing.T) {
 		}
 		defer sock.CloseAll()
 
-		sock2 := NewQUICSocket("1-ff00:0:110,[127.0.0.12]:11100", &SockOptions{PathSelectionResponsibility: "server"})
+		sock2 := NewQUICSocket("19-ffaa:1:cf1,[127.0.0.1]:11100", &SockOptions{PathSelectionResponsibility: "server"})
 		err = sock2.Listen()
 		if err != nil {
 			t.Error(err)
@@ -34,7 +34,7 @@ func Test_QUICSocket(t *testing.T) {
 		}
 
 		go func() {
-			paths, err := lookup.PathLookup("1-ff00:0:110,[127.0.0.12]:21100")
+			paths, err := lookup.PathLookup("19-ffaa:1:cf1,[127.0.0.1]:21100")
 			if err != nil {
 				t.Error(err)
 				return

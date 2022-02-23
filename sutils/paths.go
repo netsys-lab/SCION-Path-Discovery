@@ -3,6 +3,7 @@ package sutils
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/scionproto/scion/go/lib/addr"
 	"github.com/scionproto/scion/go/lib/daemon"
@@ -12,6 +13,7 @@ import (
 func SetPath(addr *snet.UDPAddr, path *snet.Path) {
 	addr.Path = (*path).Path()
 	addr.NextHop = (*path).UnderlayNextHop()
+	fmt.Printf("Setting path to %s\n", addr.Path.String())
 }
 
 func queryPaths(sciond daemon.Connector, ctx context.Context, dst *snet.UDPAddr) ([]snet.Path, error) {

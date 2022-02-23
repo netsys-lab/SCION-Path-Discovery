@@ -4,11 +4,13 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/binary"
+	"fmt"
 	"net"
 	"sync"
 	"time"
 
 	"github.com/lucas-clemente/quic-go"
+	"github.com/netsec-ethz/scion-apps/pkg/pan"
 	"github.com/netsys-lab/scion-path-discovery/sutils"
 	"github.com/scionproto/scion/go/lib/snet"
 	"github.com/scionproto/scion/go/lib/spath"
@@ -99,6 +101,7 @@ type QUICReliableConn struct { // Former: MonitoredConn
 	closed           bool
 	id               string
 	NoReturnPathConn bool
+	sconn            net.PacketConn
 }
 
 func (qc *QUICReliableConn) GetState() int {
@@ -122,11 +125,13 @@ func (qc *QUICReliableConn) Read(b []byte) (int, error) {
 
 func (qc *QUICReliableConn) Dial(addr snet.UDPAddr, path *snet.Path) error {
 	qc.state = ConnectionStates.Pending
-	sconn, err := sutils.Listen(nil)
-	if err != nil {
-		return err
-	}
-
+	a := qc.local.Copy()
+	a.Host.Port = a.Host.Port + 100
+	s := a.String()
+	var listen pan.IPPortValue
+	listen.Set(s)
+	r, err := pan.ParseUDPAddr(addr.String())
+	// r.Port = r.Port + 100
 	if addr.Path.IsEmpty() {
 		sutils.SetPath(&addr, path)
 	}
@@ -135,23 +140,23 @@ func (qc *QUICReliableConn) Dial(addr snet.UDPAddr, path *snet.Path) error {
 	qc.path = path
 
 	host := sutils.MangleSCIONAddr(qc.peer)
-	log.Debugf("Dialing to %s and host %s", addr.String(), qc.peer)
-
-	session, err := quic.Dial(sconn, &addr, host, &tls.Config{
+	log.Debugf("Dialing to %s and host %s and path %s", addr.String(), qc.peer, addr.Path.String())
+	fmt.Println("DIAL")
+	session, err := pan.DialQUIC(context.Background(), listen.Get(), r, nil, nil, host, &tls.Config{
 		Certificates:       sutils.GetDummyTLSCerts(),
 		NextProtos:         []string{"scion-filetransfer"},
 		InsecureSkipVerify: true,
 	}, &quic.Config{
 		KeepAlive: true,
 	})
-
 	if err != nil {
 		return err
 	}
 
-	log.Debugf("Opening Stream to %s", addr.String())
+	fmt.Println("STREAM")
+	log.Debugf("Opened Stream to %s", addr.String())
 
-	qc.session = session
+	// qc.session = session
 	stream, err := session.OpenStreamSync(context.Background())
 	if err != nil {
 		return err
@@ -237,7 +242,7 @@ func (qc *QUICReliableConn) AcceptStream() (quic.Stream, error) {
 		return nil, err
 	}
 
-	// qc.internalConn = stream
+	qc.internalConn = stream
 
 	return stream, nil
 }
@@ -250,29 +255,31 @@ func (qc *QUICReliableConn) Listen(addr snet.UDPAddr) error {
 	}
 	qc.local = &addr
 	var sconn net.PacketConn
-	var err error
-	if qc.NoReturnPathConn {
+	// var err error
+	var listen pan.IPPortValue
+	/*if qc.NoReturnPathConn {
 		sconn, err = sutils.Listen(&udpAddr)
 	} else {
 		sconn, err = Listen(&udpAddr) // appnet.Listen(&udpAddr)
 		if err != nil {
 			return err
 		}
-	}
-
-	listener, err := quic.Listen(sconn, &tls.Config{
+	}*/
+	s := udpAddr.String()
+	listen.Set(s)
+	l, err := pan.ListenQUIC(context.Background(), listen.Get(), nil, &tls.Config{
 		Certificates: sutils.GetDummyTLSCerts(),
 		NextProtos:   []string{"scion-filetransfer"},
 	}, &quic.Config{
 		KeepAlive: true,
 	})
-
 	if err != nil {
 		return err
 	}
 
-	qc.listener = listener
+	qc.listener = l
 	qc.state = ConnectionStates.Pending
+	qc.sconn = sconn
 	return nil
 }
 
