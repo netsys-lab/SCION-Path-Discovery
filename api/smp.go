@@ -69,6 +69,10 @@ type MPPeerSock struct {
 	MetricsInterval         time.Duration
 	selection               pathselection.CustomPathSelection
 	PathSelectionInterval   time.Duration
+	// metricsChan             chan bool
+	// pathselectionChan       chan bool
+	metricsTicker       *time.Ticker
+	pathselectionTicker *time.Ticker
 }
 
 //
@@ -203,11 +207,16 @@ func (mp *MPPeerSock) WaitForPeerConnect(sel pathselection.CustomPathSelection) 
 }
 
 func (mp *MPPeerSock) collectMetrics() {
-	ticker := time.NewTicker(mp.MetricsInterval)
+	mp.metricsTicker = time.NewTicker(mp.MetricsInterval)
 	go func() {
 		for {
-			<-ticker.C
-			mp.PathQualityDB.UpdateMetrics()
+			select {
+			case <-mp.metricsTicker.C:
+				mp.PathQualityDB.UpdateMetrics()
+				break
+				// case <-mp.metricsChan:
+				// 	return
+			}
 		}
 
 	}()
@@ -236,9 +245,9 @@ func (mp *MPPeerSock) StartPathSelection(sel pathselection.CustomPathSelection, 
 	}
 
 	if !noPeriodicPathSelection {
-		ticker := time.NewTicker(mp.PathSelectionInterval)
+		mp.pathselectionTicker = time.NewTicker(mp.PathSelectionInterval)
 		go func() {
-			for range ticker.C {
+			for range mp.pathselectionTicker.C {
 				if mp.Peer != nil {
 					mp.pathSelection(sel)
 					mp.DialAll(mp.SelectedPathSet, &socket.ConnectOptions{
@@ -343,7 +352,12 @@ func (mp *MPPeerSock) connectionSetChange(conns []packets.UDPConn) {
 
 func (mp *MPPeerSock) Disconnect() []error {
 	mp.PacketScheduler.SetConnections(make([]packets.UDPConn, 0))
-	return mp.UnderlaySocket.CloseAll()
+	errs := mp.UnderlaySocket.CloseAll()
+
+	// TODO: Close all timers...
+	mp.pathselectionTicker.Stop()
+	mp.metricsTicker.Stop()
+	return errs
 }
 
 // Could call dialPath for all paths. However, not the connections over included

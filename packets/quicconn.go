@@ -143,7 +143,8 @@ func (qc *QUICReliableConn) Dial(addr snet.UDPAddr, path *snet.Path) error {
 		NextProtos:         []string{"scion-filetransfer"},
 		InsecureSkipVerify: true,
 	}, &quic.Config{
-		KeepAlive: true,
+		KeepAlive:      true,
+		MaxIdleTimeout: 3 * time.Second,
 	})
 
 	if err != nil {
