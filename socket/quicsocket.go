@@ -257,9 +257,14 @@ func (s *QUICSocket) DialAll(remote snet.UDPAddr, path []pathselection.PathQuali
 			}
 		}
 		if connOpen {
-			log.Debugf("Connection over path id %s already open, skipping", v.Id)
-			conns = append(conns, openConn)
-			continue
+			if openConn.GetState() == packets.ConnectionStates.Closed {
+				log.Debugf("Connection over path id %s was closed, removing it", v.Id)
+			} else {
+				log.Debugf("Connection over path id %s already open, skipping", v.Id)
+				conns = append(conns, openConn)
+				continue
+			}
+
 		}
 		conn, err := s.Dial(remote, v.Path, options, i)
 		if err != nil {
