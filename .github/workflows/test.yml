@@ -24,7 +24,7 @@ jobs:
             scion_commit=${scion_mod_version##*[ -]}
             git clone ${scion_repo} ~/scion
             cd ~/scion
-            # git checkout --quiet ${scion_commit} 
+            git checkout --quiet ${scion_commit} 
     - name: Build SCION
       run: |
             # Log tool versions provided by CircleCi
