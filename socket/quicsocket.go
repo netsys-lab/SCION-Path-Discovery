@@ -164,14 +164,14 @@ func (s *QUICSocket) WaitForDialIn() (*snet.UDPAddr, error) {
 	}
 
 	s.listenConns[0].SetRemote(&p.Addr)
-	log.Debugf("Waiting for %d more connections", p.NumPaths-1)
+	log.Debugf("Waiting for %d more connections on %s from remote %s", p.NumPaths-1, s.local, p.Addr.String())
 
 	for i := 1; i < p.NumPaths; i++ {
 		_, err := s.WaitForIncomingConn()
 		if err != nil {
 			return nil, err
 		}
-		log.Debugf("Dialed In %d of %d", i, p.NumPaths)
+		log.Debugf("Dialed In %d of %d on %s from remote %s", i, p.NumPaths, s.local, p.Addr.String())
 	}
 
 	addr := p.Addr
@@ -258,18 +258,21 @@ func (s *QUICSocket) DialAll(remote snet.UDPAddr, path []pathselection.PathQuali
 		}
 		if connOpen {
 			if openConn.GetState() == packets.ConnectionStates.Closed {
-				log.Debugf("Connection over path id %s was closed, removing it", v.Id)
+				// log.Errorf("Connection over path id %s was closed, removing it", v.Id)
+				continue
 			} else {
-				log.Debugf("Connection over path id %s already open, skipping", v.Id)
+				// log.Errorf("Connection over path id %s already open, skipping", v.Id)
 				conns = append(conns, openConn)
 				continue
 			}
 
 		}
+		// log.Error("Dial over ", v.Path, " to remote ", remote)
 		conn, err := s.Dial(remote, v.Path, options, i)
 		if err != nil {
 			return nil, err
 		}
+		// log.Error("Dialed over ", v.Path)
 		conn.SetId(v.Id)
 		conns = append(conns, conn)
 	}

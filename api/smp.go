@@ -67,7 +67,7 @@ type MPPeerSock struct {
 	Mode                    string
 	Options                 *MPSocketOptions
 	MetricsInterval         time.Duration
-	selection               pathselection.CustomPathSelection
+	Selection               pathselection.CustomPathSelection
 	PathSelectionInterval   time.Duration
 	// metricsChan             chan bool
 	// pathselectionChan       chan bool
@@ -163,7 +163,7 @@ func (mp *MPPeerSock) WaitForPeerConnect(sel pathselection.CustomPathSelection) 
 	}
 	log.Debugf("Accepted connection from %s", remote.String())
 	mp.Peer = remote
-	mp.selection = sel
+	mp.Selection = sel
 	// Start selection process -> will update DB
 	mp.StartPathSelection(sel, sel == nil)
 	log.Debugf("Done path selection")
@@ -184,14 +184,14 @@ func (mp *MPPeerSock) WaitForPeerConnect(sel pathselection.CustomPathSelection) 
 			mp.PathQualityDB.SetConnections(conns)
 			mp.connectionSetChange(conns)
 			for {
-				log.Debugf("Waiting for new connections...")
+				log.Debug("CLIENT Waiting for new connections...")
 				conn, err := mp.UnderlaySocket.WaitForIncomingConn()
 				if conn == nil && err == nil {
-					log.Debugf("Socket does not implement WaitForIncomingConn, stopping here...")
+					log.Warn("CLIENT Socket does not implement WaitForIncomingConn, stopping here...")
 					return
 				}
 				if err != nil {
-					log.Errorf("Failed to wait for incoming connection %s", err.Error())
+					log.Errorf("CLIENT Failed to wait for incoming connection %s", err.Error())
 					return
 				}
 
@@ -264,9 +264,9 @@ func (mp *MPPeerSock) StartPathSelection(sel pathselection.CustomPathSelection, 
 }
 
 func (mp *MPPeerSock) ForcePathSelection() {
-	mp.pathSelection(mp.selection)
+	mp.pathSelection(mp.Selection)
 	mp.DialAll(mp.SelectedPathSet, &socket.ConnectOptions{
-		SendAddrPacket:      false,
+		SendAddrPacket:      true,
 		DontWaitForIncoming: true,
 	})
 }
@@ -282,6 +282,12 @@ func (mp *MPPeerSock) pathSelection(sel pathselection.CustomPathSelection) {
 		log.Errorf("Failed to get current pathset %s", err)
 		return
 	}
+
+	if sel == nil {
+		log.Warn("No sel passed")
+		return
+	}
+
 	selectedPathSet, err := sel.CustomPathSelectAlg(&pathSet)
 	if err != nil {
 		log.Errorf("Failed to get call customPathSelection %s", err)
@@ -318,7 +324,7 @@ func (mp *MPPeerSock) Connect(pathSetWrapper pathselection.CustomPathSelection, 
 		opts = options
 	}
 	var err error
-	mp.selection = pathSetWrapper
+	mp.Selection = pathSetWrapper
 	mp.StartPathSelection(pathSetWrapper, opts.NoPeriodicPathSelection)
 	/*selectedPathSet, err := mp.PathQualityDB.GetPathSet(mp.Peer)
 	if err != nil {
