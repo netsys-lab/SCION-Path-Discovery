@@ -2,7 +2,6 @@ package pathselection
 
 import (
 	"bytes"
-	"context"
 	"crypto/sha256"
 	"errors"
 	"fmt"
@@ -10,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/netsec-ethz/scion-apps/pkg/appnet"
 	"github.com/netsys-lab/scion-path-discovery/packets"
 
 	"github.com/scionproto/scion/go/lib/addr"
@@ -205,10 +203,12 @@ func NewInMemoryPathQualityDatabase() *InMemoryPathQualityDatabase {
 }
 
 func (db *InMemoryPathQualityDatabase) UpdatePathQualities(addr *snet.UDPAddr, metricsInterval time.Duration) error {
-	paths, err := appnet.DefNetwork().PathQuerier.Query(context.Background(), addr.IA)
+	// TODO: Fix with pan
+	paths := make([]snet.Path, 0)
+	/*paths, err := appnet.DefNetwork().PathQuerier.Query(context.Background(), addr.IA)
 	if err != nil {
 		return err
-	}
+	}*/
 	var pathQualities []PathQuality
 	for _, path := range paths {
 
@@ -246,6 +246,21 @@ func UnwrapPathset(pathset PathSet) []snet.Path {
 	}
 
 	return paths
+}
+
+func WrapPathset(paths []snet.Path) PathSet {
+	pathQualities := make([]PathQuality, 0)
+	for _, p := range paths {
+		pq := PathQuality{
+			Path: p,
+		}
+		pathQualities = append(pathQualities, pq)
+	}
+	pathsSet := PathSet{
+		Paths: pathQualities,
+	}
+
+	return pathsSet
 }
 
 func PathToString(path snet.Path) string {

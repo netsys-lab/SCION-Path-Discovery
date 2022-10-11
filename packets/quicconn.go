@@ -4,15 +4,17 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/binary"
+	"fmt"
 	"net"
 	"sync"
 	"time"
 
 	"github.com/lucas-clemente/quic-go"
-	"github.com/netsec-ethz/scion-apps/pkg/appnet"
-	"github.com/netsec-ethz/scion-apps/pkg/appnet/appquic"
+	"github.com/netsec-ethz/scion-apps/pkg/pan"
+	"github.com/netsec-ethz/scion-apps/pkg/quicutil"
 	"github.com/scionproto/scion/go/lib/snet"
 	"github.com/scionproto/scion/go/lib/spath"
+	"inet.af/netaddr"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -39,11 +41,14 @@ type returnPathConn struct {
 }
 
 func Listen(listen *net.UDPAddr) (*returnPathConn, error) {
-	sconn, err := appnet.Listen(listen)
+	/*sconn, err := appnet.Listen(listen)
 	if err != nil {
 		return nil, err
-	}
-	return newReturnPathConn(sconn), nil
+	}*/
+	// sconn, err := pan.ListenQUIC()
+	// return newReturnPathConn(sconn), nil
+	// TODO: Fix with PAN
+	return nil, nil
 }
 
 func newReturnPathConn(conn *snet.Conn) *returnPathConn {
@@ -121,7 +126,8 @@ func (qc *QUICReliableConn) Read(b []byte) (int, error) {
 	return n, err
 }
 
-func (qc *QUICReliableConn) Dial(addr snet.UDPAddr, path *snet.Path) error {
+/*
+func (qc *QUICReliableConn) Dial2(addr snet.UDPAddr, path *snet.Path) error {
 	qc.state = ConnectionStates.Pending
 	sconn, err := appnet.Listen(nil)
 	if err != nil {
@@ -161,6 +167,41 @@ func (qc *QUICReliableConn) Dial(addr snet.UDPAddr, path *snet.Path) error {
 
 	qc.remote = &addr
 	log.Debugf("Opened Stream to %s", addr.String())
+	qc.state = ConnectionStates.Open
+	qc.internalConn = stream
+	return nil
+}*/
+
+func (qc *QUICReliableConn) Dial(addr snet.UDPAddr, path *snet.Path) error {
+	qc.state = ConnectionStates.Pending
+	qc.peer = addr.String()
+	qc.path = path
+
+	panAddr, err := pan.ResolveUDPAddr(addr.String())
+	if err != nil {
+		return err
+	}
+	tlsCfg := &tls.Config{
+		InsecureSkipVerify: true,
+		NextProtos:         []string{"scion-filetransfer"},
+	}
+	// Set Pinging Selector with active probing on two paths
+	selector := &pan.DefaultSelector{}
+	// selector.SetActive(2)
+	session, err := pan.DialQUIC(context.Background(), netaddr.IPPort{}, panAddr, nil, selector, "", tlsCfg, nil)
+	if err != nil {
+		return err
+	}
+	log.Warn("Got session")
+	qc.session = session
+	stream, err := session.OpenStreamSync(context.Background())
+	if err != nil {
+		return err
+	}
+	log.Warn("Got Stream")
+
+	qc.remote = &addr
+	log.Infof("Opened Stream to %s", addr.String())
 	qc.state = ConnectionStates.Open
 	qc.internalConn = stream
 	return nil
@@ -227,12 +268,12 @@ func (qc *QUICReliableConn) MarkAsClosed() error {
 }
 
 func (qc *QUICReliableConn) AcceptStream() (quic.Stream, error) {
-	log.Debugf("Accepting on quic %s", qc.listener.Addr())
+	log.Warnf("Accepting on quic %s", qc.listener.Addr())
 	session, err := qc.listener.Accept(context.Background())
 	if err != nil {
 		return nil, err
 	}
-	log.Debugf("Got session on quic %s", qc.listener.Addr())
+	log.Warnf("Got session on quic %s", qc.listener.Addr())
 
 	stream, err := session.AcceptStream(context.Background())
 	if err != nil {
@@ -245,15 +286,31 @@ func (qc *QUICReliableConn) AcceptStream() (quic.Stream, error) {
 }
 
 func (qc *QUICReliableConn) Listen(addr snet.UDPAddr) error {
-	qc.Ready = make(chan bool, 0)
-	udpAddr := net.UDPAddr{
+	ipP := pan.IPPortValue{}
+	s := fmt.Sprintf("%s:%d", addr.Host.IP, addr.Host.Port)
+	log.Warn(s)
+	ipP.Set(s)
+	tlsCfg := &tls.Config{
+		Certificates: quicutil.MustGenerateSelfSignedCert(),
+		NextProtos:   []string{"scion-filetransfer"},
+	}
+	listener, err := pan.ListenQUIC(context.Background(), ipP.Get(), nil, tlsCfg, nil)
+	if err != nil {
+		return err
+	}
+	log.Warn("Listener")
+	// defer listener.Close()
+	fmt.Println(listener.Addr())
+
+	// TODO: Fix with PAN
+	/*udpAddr := net.UDPAddr{
 		IP:   addr.Host.IP,
 		Port: addr.Host.Port,
 	}
 	qc.local = &addr
 	var sconn net.PacketConn
 	var err error
-	if qc.NoReturnPathConn {
+	/*if qc.NoReturnPathConn {
 		sconn, err = appnet.Listen(&udpAddr)
 	} else {
 		sconn, err = Listen(&udpAddr) // appnet.Listen(&udpAddr)
@@ -271,7 +328,7 @@ func (qc *QUICReliableConn) Listen(addr snet.UDPAddr) error {
 
 	if err != nil {
 		return err
-	}
+	}*/
 
 	qc.listener = listener
 	qc.state = ConnectionStates.Pending
@@ -289,13 +346,16 @@ func (qc *QUICReliableConn) GetInternalConn() quic.Stream {
 func (qc *QUICReliableConn) GetPath() *snet.Path {
 	return qc.path
 }
+
+func (qc *QUICReliableConn) SetPath(path *snet.Path) error {
+	qc.path = path
+	return nil
+}
+
 func (qc *QUICReliableConn) GetRemote() *snet.UDPAddr {
 	return qc.remote
 }
 
-func (qc *QUICReliableConn) SetPath(path *snet.Path) {
-	qc.path = path
-}
 func (qc *QUICReliableConn) SetRemote(remote *snet.UDPAddr) {
 	qc.remote = remote
 }

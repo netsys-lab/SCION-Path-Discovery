@@ -1,5 +1,6 @@
 package packets
 
+/*
 import (
 	"testing"
 	"time"
@@ -67,3 +68,4 @@ func Test_QUICConn(t *testing.T) {
 	})
 
 }
+*/

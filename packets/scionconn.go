@@ -1,13 +1,18 @@
 package packets
 
 import (
+	"context"
+	"fmt"
 	"net"
 	"time"
 
-	"github.com/netsec-ethz/scion-apps/pkg/appnet"
-	optimizedconn "github.com/netsys-lab/scion-optimized-connection/pkg"
+	// optimizedconn "github.com/netsys-lab/scion-optimized-connection/pkg"
+	"github.com/netsec-ethz/scion-apps/pkg/pan"
 	"github.com/scionproto/scion/go/lib/snet"
+	"inet.af/netaddr"
 )
+
+// TODO: internalConn/2 needs to be fixed
 
 var _ UDPConn = (*SCIONConn)(nil)
 
@@ -27,20 +32,21 @@ func (sc *SCIONConn) GetType() int {
 // where both information are available, so we put it here, not obsolete
 type SCIONConn struct { // Former: MonitoredConn
 	BasicConn
-	internalConn *optimizedconn.OptimizedSCIONConn
-	path         *snet.Path
-	peer         string
-	state        int // See Connection States
-	metrics      PathMetrics
-	remote       *snet.UDPAddr
-	local        *net.UDPAddr
-	connType     int
-	id           string
+	internalConn  net.PacketConn
+	internalConn2 net.Conn
+	path          *snet.Path
+	peer          string
+	state         int // See Connection States
+	metrics       PathMetrics
+	remote        *snet.UDPAddr
+	local         *net.UDPAddr
+	connType      int
+	id            string
 }
 
 // This simply wraps conn.Read and will later collect metrics
 func (sc *SCIONConn) ReadStream(b []byte) (int, error) {
-	n, err := sc.internalConn.Read(b)
+	n, _, err := sc.internalConn.ReadFrom(b)
 	if err != nil {
 		return n, err
 	}
@@ -51,7 +57,7 @@ func (sc *SCIONConn) ReadStream(b []byte) (int, error) {
 
 // This simply wraps conn.Write and will later collect metrics
 func (sc *SCIONConn) WriteStream(b []byte) (int, error) {
-	n, err := sc.internalConn.Write(b)
+	n, err := sc.internalConn2.Write(b)
 	sc.metrics.WrittenBytes += int64(n)
 	sc.metrics.WrittenPackets++
 	if err != nil {
@@ -62,7 +68,7 @@ func (sc *SCIONConn) WriteStream(b []byte) (int, error) {
 
 // This simply wraps conn.Read and will later collect metrics
 func (sc *SCIONConn) Read(b []byte) (int, error) {
-	n, err := sc.internalConn.Read(b)
+	n, _, err := sc.internalConn.ReadFrom(b)
 	if err != nil {
 		return n, err
 	}
@@ -73,7 +79,7 @@ func (sc *SCIONConn) Read(b []byte) (int, error) {
 
 // This simply wraps conn.Write and will later collect metrics
 func (sc *SCIONConn) Write(b []byte) (int, error) {
-	n, err := sc.internalConn.Write(b)
+	n, err := sc.internalConn2.Write(b)
 	sc.metrics.WrittenBytes += int64(n)
 	sc.metrics.WrittenPackets++
 	if err != nil {
@@ -83,33 +89,58 @@ func (sc *SCIONConn) Write(b []byte) (int, error) {
 }
 
 func (sc *SCIONConn) Dial(addr snet.UDPAddr, path *snet.Path) error {
-	appnet.SetPath(&addr, *path)
-	sc.state = ConnectionStates.Open
-	conn, err := optimizedconn.Dial(sc.local, &addr)
+	// appnet.SetPath(&addr, *path)
+
+	pAddr, err := pan.ResolveUDPAddr(addr.String())
 	if err != nil {
 		return err
 	}
+
+	sc.state = ConnectionStates.Open
+	conn, err := pan.DialUDP(context.Background(), netaddr.IPPort{}, pAddr, nil, nil)
+	if err != nil {
+		return err
+	}
+	// TODO: Fix with PAN
+	/*conn, err := optimizedconn.Dial(sc.local, &addr)
+	if err != nil {
+		return err
+	}
+	*/
 	sc.remote = &addr
 	sc.path = path
-	sc.internalConn = conn
+	sc.internalConn2 = conn
 	sc.connType = ConnectionTypes.Outgoing
+
 	return nil
 
 }
 
 func (sc *SCIONConn) Listen(addr snet.UDPAddr) error {
-	udpAddr := net.UDPAddr{
-		IP:   addr.Host.IP,
-		Port: addr.Host.Port,
-	}
-	conn, err := optimizedconn.Listen(&udpAddr)
+
+	ipP := pan.IPPortValue{}
+	s := fmt.Sprintf("%s:%d", addr.Host.IP, addr.Host.Port)
+	ipP.Set(s)
+
+	conn, err := pan.ListenUDP(context.Background(), ipP.Get(), nil)
 	if err != nil {
 		return err
 	}
+	// TODO: Fix with PAN
+	udpAddr := net.UDPAddr{
+		IP:   addr.Host.IP,
+		Port: addr.Host.Port,
+	} /*
+		conn, err := optimizedconn.Listen(&udpAddr)
+		if err != nil {
+			return err
+		}
+	*/
 	sc.internalConn = conn
 	sc.local = &udpAddr
 	sc.connType = ConnectionTypes.Incoming
 	sc.state = ConnectionStates.Open
+
 	return nil
 }
 
@@ -136,13 +167,15 @@ func (sc *SCIONConn) MarkAsClosed() error {
 func (sc *SCIONConn) GetPath() *snet.Path {
 	return sc.path
 }
+func (sc *SCIONConn) SetPath(path *snet.Path) error {
+	sc.path = path
+	return nil
+}
+
 func (sc *SCIONConn) GetRemote() *snet.UDPAddr {
 	return sc.remote
 }
 
-func (sc *SCIONConn) SetPath(path *snet.Path) {
-	sc.path = path
-}
 func (sc *SCIONConn) SetRemote(remote *snet.UDPAddr) {
 	sc.remote = remote
 }
