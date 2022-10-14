@@ -49,4 +49,15 @@ This task consists of performance measurements for different multipath scenarios
 - [x] [Demonstration video](https://drive.google.com/file/d/1zDdmPvLGh1MXgV5Ne1qezudgTcmd7eVq/view?usp=sharing) of BitTorrent over SCION
 - [x] [Demo seeder](https://github.com/netsys-lab/bittorrent-over-scion/tree/master/demo) that provides sample torrent running in SCIONLab
 
+## Task 5. A partially disjoint path selection algorithm
+
+We propose to enhance our SCION multipath library with a partially disjoint path selection algorithm, that will significantly increase the application performance by gradually re-distributing application traffic over alternative paths, while monitoring overall throughput.
+
+### Milestone(s)
+- [ ] In our SCION Pathdiscovery project funded by NGI Zero Discovery, we have developed robust concepts for disjoint path selection as a means to avoid shared bottlenecks. We achieve bottleneck avoidance in uploading peers through only using completely disjoint paths. However, also partially disjoint paths may lead to performance improvements, which was not considered yet. We thus propose to extend our core path selection strategy as follows: 
+  - Peers perform "path exploration" by shifting portions of their traffic to alternative paths while monitoring overall throughput, gradually re-distributing traffic to maximize network utilization. 
+  - We expect the proposed extensions to significantly increase the performance of our SCION multipath library by leveraging unused network capacities. 
+  - Finally, we anticipate that our refined path selection approach contributes significant additional insights in the field of path-aware networking. 
+  - Consequently, we plan to implement and evaluate the proposed path selection algorithm in the next step, in combination with revisiting our multipath library API and performing bug fixes.
+
 This work is funded through the NGI0 Discovery Fund, a fund established by NLnet with financial support from the European Commission's Next Generation Internet programme, under the aegis of DG Communications Networks, Content and Technology under grant agreement No 825322 https://nlnet.nl/project/SCION-Swarm/
