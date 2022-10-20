@@ -27,7 +27,7 @@ func PathToString(path snet.Path) string {
 	}
 	intfs := path.Metadata().Interfaces
 	if len(intfs) == 0 {
-		return ""
+		return fmt.Sprintf("%s", path)
 	}
 	var hops []string
 	intf := intfs[0]

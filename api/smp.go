@@ -54,6 +54,9 @@ func NewPanSock(local string, peer *snet.UDPAddr, options *PanSocketOptions) *Pa
 	case "QUIC":
 		sock.UnderlaySocket = socket.NewQUICSocket(local)
 		break
+	case "SCION":
+		sock.UnderlaySocket = socket.NewSCIONSocket(local)
+		break
 	}
 
 	return sock
