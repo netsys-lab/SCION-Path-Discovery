@@ -19,10 +19,9 @@ var isServer *bool = flag.Bool("s", false, "Run as Server (otherwise, client)")
 func main() {
 	// peers := []string{"peer1", "peer2", "peer3"} // Later real addresses
 	flag.Parse()
-
-	mpSock := smp.NewPanSock(*localAddr, nil, &smp.MPSocketOptions{
-		Transport:     "QUIC",
-		MultiportMode: true,
+	logrus.SetLevel(logrus.DebugLevel)
+	mpSock := smp.NewPanSock(*localAddr, nil, &smp.PanSocketOptions{
+		Transport: "QUIC",
 	})
 	err := mpSock.Listen()
 	if err != nil {
@@ -39,12 +38,17 @@ func main() {
 		conns := mpSock.UnderlaySocket.GetConnections()
 		log.Printf("Connected to %s", remote.String())
 		bts := make([]byte, packets.PACKET_SIZE)
-		n, err := conns[0].Read(bts)
-		if err != nil {
-			log.Fatalf("Failed to read bytes from peer %s, err: %v", remote.String(), err)
-			os.Exit(1)
+		logrus.Warn(conns)
+		for {
+			n, err := conns[0].Read(bts)
+			logrus.Warn("READ")
+			if err != nil {
+				log.Fatalf("Failed to read bytes from peer %s, err: %v", remote.String(), err)
+				os.Exit(1)
+			}
+			log.Printf("Read %d bytes from %s", n, remote.String())
+
 		}
-		log.Printf("Read %d bytes from %s", n, remote.String())
 	} else {
 		peerAddr, err := snet.ParseUDPAddr(*remoteAddr)
 		if err != nil {
@@ -62,15 +66,18 @@ func main() {
 			os.Exit(1)
 		}
 		conns := mpSock.UnderlaySocket.GetConnections()
+		logrus.Warn(conns)
 		bts := make([]byte, packets.PACKET_SIZE)
-		n, err := conns[1].Write(bts)
-
-		// n, err := mpSock.Write(bts)
-		if err != nil {
-			log.Fatalf("Failed to write bytes from peer %s, err: %v", *remoteAddr, err)
-			os.Exit(1)
+		for {
+			n, err := conns[0].Write(bts)
+			// n, err := mpSock.Write(bts)
+			if err != nil {
+				log.Fatalf("Failed to write bytes from peer %s, err: %v", *remoteAddr, err)
+				os.Exit(1)
+			}
+			log.Printf("Wrote %d bytes to %s", n, *remoteAddr)
 		}
-		log.Printf("Wrote %d bytes to %s", n, *remoteAddr)
+
 	}
 
 	// mpSock.
