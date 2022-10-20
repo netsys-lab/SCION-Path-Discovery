@@ -128,24 +128,17 @@ func (dj *DisjointPathselection) GetNextProbingPathset() (pathselection.PathSet,
 	psId := ""
 	defaultPsId := ""
 
-	// TODO: ExploreConns is fixed to 2, need to revisit
 	fixedPaths := dj.NumConns - dj.NumExploreConns
 	for i := 0; i < fixedPaths; i++ {
 		defaultPsId += lookup.PathToString(conflictPaths[i].Path) + "|"
 	}
-	// logrus.Warn(fixedPaths)
-	// logrus.Warn(conflictPaths)
 
-	// We do "breadth first search" meaning we start with the index i := fixedPath and j := fixedPath+1
-	// and increase i and j until we find a match or reach the end of the list.
 	matchingPsId := ""
 	remainingPaths := conflictPaths[fixedPaths:]
 	remainginPathIds := make([]string, 0)
 	for _, p := range remainingPaths {
 		remainginPathIds = append(remainginPathIds, lookup.PathToString(p.Path))
 	}
-
-	// logrus.Error(remainingPaths)
 
 	matchingPs := pathselection.PathSet{}
 	Perm(remainginPathIds, func(s []string) {
@@ -156,8 +149,6 @@ func (dj *DisjointPathselection) GetNextProbingPathset() (pathselection.PathSet,
 			}
 
 		}
-
-		// logrus.Error("Checking Permutation ", psId)
 
 		parts := strings.Split(psId, "|")
 		isPathNewForAlreadyChecked := make([]bool, 0)
@@ -184,15 +175,12 @@ func (dj *DisjointPathselection) GetNextProbingPathset() (pathselection.PathSet,
 		if !pathCombinationWasUsedBefore && matchingPsId == "" {
 			matchingPsId = psId
 			logrus.Debug("[DisjointPathselection] Found new Pathset to evaluate: ", psId)
-			// return proper path set
 			paths := make([]snet.Path, 0)
 
 			for k := 0; k < fixedPaths; k++ {
 				paths = append(paths, conflictPaths[k].Path)
 			}
 
-			// paths = append(paths, conflictPaths[i].Path)
-			// paths = append(paths, conflictPaths[j].Path)
 			for i, pId := range s {
 				if i < (dj.NumConns - fixedPaths) {
 					for _, p := range conflictPaths {
@@ -219,58 +207,6 @@ func (dj *DisjointPathselection) GetNextProbingPathset() (pathselection.PathSet,
 	return pathselection.PathSet{}, nil
 }
 
-/*for i < len(conflictPaths) && j < len(conflictPaths) {
-
-	psId = defaultPsId + lookup.PathToString(conflictPaths[i].Path) + "|" + lookup.PathToString(conflictPaths[j].Path) + "|"
-
-	// Advanced check for wrongly sorted paths
-	parts := strings.Split(psId, "|")
-	isPathNewForAlreadyChecked := make([]bool, 0)
-	for _, p := range alreadyCheckedPathsets {
-		newP := false // One path is new
-		for _, v := range parts {
-			if !strings.Contains(p, v) {
-				newP = true
-				break
-			}
-		}
-		isPathNewForAlreadyChecked = append(isPathNewForAlreadyChecked, newP)
-	}
-
-	pathCombinationWasUsedBefore := false
-	// If at least one entry is false, then this one is not new
-	for _, newP := range isPathNewForAlreadyChecked {
-		if !newP {
-			pathCombinationWasUsedBefore = true
-			break
-		}
-	}
-
-	if !pathCombinationWasUsedBefore {
-		logrus.Debug("[DisjointPathselection] Found new Pathset to evaluate: ", psId)
-		// return proper path set
-		paths := make([]snet.Path, 0)
-
-		for k := 0; i < fixedPaths; k++ {
-			paths = append(paths, conflictPaths[k].Path)
-		}
-
-		paths = append(paths, conflictPaths[i].Path)
-		paths = append(paths, conflictPaths[j].Path)
-		return pathselection.WrapPathset(paths), nil
-
-	}
-
-	if j == len(conflictPaths)-1 {
-		i++
-		j = i + 1
-		continue
-	}
-
-	j++
-
-}*/
-
 func (dj *DisjointPathselection) InitialPathset() (pathselection.PathSet, error) {
 	// Here we have our new path set, from which we start
 	dj.latestPathSet = dj.currentPathSet
@@ -279,7 +215,7 @@ func (dj *DisjointPathselection) InitialPathset() (pathselection.PathSet, error)
 	if err != nil {
 		return ps, err
 	}
-	logrus.Error("[DisjointPathSelection] Initial paths: ", ps.Paths)
+	logrus.Debug("[DisjointPathSelection] Initial paths: ", ps.Paths)
 	return ps, nil
 }
 
@@ -293,7 +229,7 @@ func (dj *DisjointPathselection) UpdatePathSelection() (bool, error) {
 		currentId += lookup.PathToString(p.SnetPath) + "|"
 	}
 
-	logrus.Warn("Looking up id ", currentId)
+	logrus.Trace("Looking up id ", currentId)
 
 	newMetrics := dj.remote.AggregateMetrics()
 	dj.metricsMap[currentId] = newMetrics
@@ -301,10 +237,6 @@ func (dj *DisjointPathselection) UpdatePathSelection() (bool, error) {
 	logrus.Debug("[DisjointPathselection] UpdatePathSelection called")
 	dj.numUpdates++
 
-	// if dj.latestBestWriteBandwidth == 0 {
-	//	dj.latestBestWriteBandwidth = newMetrics.AverageWriteBandwidth()
-	//	logrus.Debug("[DisjointPathselection] Set initial latestBestWriteBandwidth to ", dj.latestBestWriteBandwidth)
-	//} else {
 	// Compare to best, to make socket re-dial to improve performance
 	if dj.numUpdates%5 == 0 {
 		logrus.Error("[DisjointPathselection] Comparing old bw ", dj.latestBestWriteBandwidth, " to ", newMetrics.LastAverageWriteBandwidth(5))
@@ -315,23 +247,6 @@ func (dj *DisjointPathselection) UpdatePathSelection() (bool, error) {
 
 			// Here we have our new path set, from which we start
 			dj.latestPathSet = dj.currentPathSet
-			// Explore new
-			/*ps, err := dj.GetNextProbingPathset()
-			if err != nil {
-				return false, err
-			}
-			logrus.Debug(ps.Paths)
-			// TODO: Error handling
-			dj.remote.Disconnect()
-
-			// Reconnect
-			err = dj.remote.Connect(&ps, nil)
-			if err != nil {
-				return false, err
-			}
-			logrus.Debug("[DisjointPathselection] Reconnect successfull")
-			return true, nil*/
-
 		}
 
 		// Explore new

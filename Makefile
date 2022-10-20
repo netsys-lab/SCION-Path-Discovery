@@ -4,7 +4,7 @@ PRGS     = all
 
 
 
-all: simple disjoint
+all: simple disjoint mppingpong
 
 .PHONY: disjoint
 disjoint:
@@ -13,6 +13,10 @@ disjoint:
 .PHONY: simple
 simple:
 	$(CC) -o $(BUILDDIR)/$@ examples/simple/*.go
+
+.PHONY: mppingpong
+mppingpong:
+	$(CC) -o $(BUILDDIR)/$@ examples/mppingpong/*.go
 
 clean:
 	rm -f $(BUILDDIR)/*

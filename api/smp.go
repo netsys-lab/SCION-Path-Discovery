@@ -112,18 +112,14 @@ func (mp *PanSocket) Listen() error {
 // OnConnectionsChange event for each new incoming connection
 //
 func (mp *PanSocket) WaitForPeerConnect() (*snet.UDPAddr, error) {
-	log.Debugf("Waiting for incoming connection")
+	log.Debugf("[PanSocket] Waiting for incoming connection")
 	remote, err := mp.UnderlaySocket.WaitForDialIn()
 	if err != nil {
 		return nil, err
 	}
-	log.Debugf("Accepted connection from %s", remote.String())
+	log.Debugf("[PanSocket] Accepted connection from %s", remote.String())
 	mp.Peer = remote
-	log.Debugf("Done path selection")
-	// wait until first signal on channel
-	// selectedPathSet := <-mp.OnPathsetChange
-	// time.Sleep(1 * time.Second)
-	// dial all paths selected by user algorithm
+
 	mp.PathQualityDB.UpdatePathQualities(remote, 1*time.Second)
 	mp.collectMetrics()
 	conns := mp.UnderlaySocket.GetConnections()
@@ -173,7 +169,7 @@ func (mp *PanSocket) DialAll(pathAlternatives *pathselection.PathSet, options *s
 		return err
 	}
 
-	log.Debugf("Dialed all to %s, got %d connections", mp.Peer.String(), len(conns))
+	log.Debugf("[PanSocket] Dialed all to %s, got %d connections", mp.Peer.String(), len(conns))
 
 	mp.PathQualityDB.SetConnections(conns)
 	mp.PathQualityDB.UpdatePathQualities(&pathAlternatives.Address, 1*time.Second)
