@@ -196,8 +196,6 @@ func (dj *DisjointPathselection) GetNextProbingPathset() (pathselection.PathSet,
 		}
 	})
 
-	logrus.Error(matchingPs)
-
 	if matchingPsId != "" {
 		return matchingPs, nil
 	}

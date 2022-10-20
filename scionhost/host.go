@@ -180,6 +180,6 @@ func (h *hostContext) QueryPaths(ctx context.Context, dst pan.IA) ([]snet.Path, 
 	if err != nil {
 		return nil, err
 	}
-	logrus.Debug("[HostContext] Got %d paths to %s", len(snetPaths), dst.String())
+	logrus.Debugf("[HostContext] Got %d paths to %s", len(snetPaths), dst.String())
 	return snetPaths, nil
 }
