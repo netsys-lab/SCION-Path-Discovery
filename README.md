@@ -62,6 +62,8 @@ We propose to enhance our SCION multipath library with a partially disjoint path
 - This task is completed in [release v2.0.0](https://github.com/netsys-lab/scion-path-discovery/releases/tag/v.2.0.0-rc1)
 
 ### Further Resources
+- [Implementation](api/disjoint.go) of the partially disjoint path selection
+- [Usage example](examples/disjoint/main.go) of the partially disjoint path selection
 - [Documentation](doc/partially-disjoint-selection.md) of design and implementation as well as initial results
 - [Migration Guide](doc/migration-v1-v2.md) from version 1.x to 2.0.0
 
