@@ -69,11 +69,8 @@ type ConnectOptions struct {
 }
 ```
 
-### Handle multiple incoming PanSockets
-TODO: Just connect back
-
 ### Using the instantiated Connections
-After connecting to a peer using the `Connect` method, a slice of connections can be fetched via `sock.UnderlaySocket.GetConnections`, where each connection uses one of the selected paths internally. The library provides the channel `OnConnectionsChange` that returns new connections each time an internal ticker starts performing new pathselection. Each connection has a `GetId` method which returns its unique identifier (and also the one of its underlying path), so applications can check if the returned connections changed. The library does not dial again over already used paths. An example use of those methods is shown below:
+After connecting to a peer using the `Connect` method, a slice of connections can be fetched via `sock.UnderlaySocket.GetConnections`, where each connection uses one of the selected paths internally. An example use of those methods is shown below:
 
 ```go
 for _, conn := range mpSock.UnderlaySocket.GetConnections() {
@@ -81,7 +78,6 @@ for _, conn := range mpSock.UnderlaySocket.GetConnections() {
 }
 
 ```
-
 
 ### Configure Logging
 Smp uses [logrus](https://github.com/sirupsen/logrus) with Loglevel INFO per default. Configuring the loglevel or the log visualization, please refer to logrus documentation. A useful example configuration to display colored log messages with timestamps looks like this: 
@@ -97,31 +93,11 @@ log.SetFormatter(&log.TextFormatter{
 log.SetLevel(log.DebugLevel)
 ```
 
-### Incoming, outgoing and bidirectional connections
-In [library.md](https://github.com/netsys-lab/scion-path-discovery/blob/main/doc/library.md#connection-types) we explained the two transport types: SCION and QUIC and how their connections behave. For SCION, there is always one incoming connection, and potential `n` outgoing connections. For two connected PanSockets, the number of outoging connections, and consequently, the number of used paths for outgoing traffic, may differ (as can be seen in the MPPingPong example). Using QUIC as transport type, the connections are always bidirectional, meaning both connected PanSocks have the same number of paths in use. We implement this using a `ConnectionTypes` enum:
-
-```go
-type connectionTypes struct {
-	Incoming      int
-	Outgoing      int
-	Bidirectional int
-}
-```
-
-To determine the type of a connection, the connection provider a `GetType` method:
-
-```go
-for _, conn := range mpSock.UnderlaySocket.GetConnections() {
-    //stay at incoming connection.
-    if conn.GetType() == packets.ConnectionTypes.Incoming {
-        // Do Reading here
-    }
-}
-
-```
+### Bidirectional connections
+Independently of the transport type, the connections are always bidirectional, meaning both connected PanSocks have the same number of paths in use. 
 
 ### Metrics
-The PanSock collects metrics for each connection. In addition to the information SCION already provides (number of hops, latency), the incoming and outgoing bandwidth of connections is measured over their lifetime. The metrics are represented by the following interface:
+The PanSock collects metrics for each path. In addition to the information SCION already provides (number of hops, latency), the incoming and outgoing bandwidth of connections is measured over their lifetime. The metrics are represented by the following interface:
 
 ```go
 type PathMetrics struct {
