@@ -9,7 +9,7 @@ import (
 
 func Test_QUICSocket(t *testing.T) {
 	t.Run("QUICSocket Listen", func(t *testing.T) {
-		sock := NewQUICSocket("1-ff00:0:110,[127.0.0.12]:31000", &SockOptions{PathSelectionResponsibility: "server"})
+		sock := NewQUICSocket("1-ff00:0:110,[127.0.0.12]:31000")
 		err := sock.Listen()
 		if err != nil {
 			t.Error(err)
@@ -18,7 +18,7 @@ func Test_QUICSocket(t *testing.T) {
 	})
 
 	t.Run("SCIONSocket Listen And Dial", func(t *testing.T) {
-		sock := NewQUICSocket("1-ff00:0:110,[127.0.0.12]:21100", &SockOptions{PathSelectionResponsibility: "server"})
+		sock := NewQUICSocket("1-ff00:0:110,[127.0.0.12]:21100")
 		err := sock.Listen()
 		if err != nil {
 			t.Error(err)
@@ -26,7 +26,7 @@ func Test_QUICSocket(t *testing.T) {
 		}
 		defer sock.CloseAll()
 
-		sock2 := NewQUICSocket("1-ff00:0:110,[127.0.0.12]:11100", &SockOptions{PathSelectionResponsibility: "server"})
+		sock2 := NewQUICSocket("1-ff00:0:110,[127.0.0.12]:11100")
 		err = sock2.Listen()
 		if err != nil {
 			t.Error(err)
@@ -47,8 +47,8 @@ func Test_QUICSocket(t *testing.T) {
 
 			pathQualities := make([]pathselection.PathQuality, 1)
 			pathQualities[0] = pathselection.PathQuality{
-				Id:   "FirstPath",
-				Path: paths[0],
+				Id:       "FirstPath",
+				SnetPath: paths[0],
 			}
 
 			sock2.DialAll(*sock.localAddr, pathQualities, DialOptions{SendAddrPacket: true})

@@ -2,22 +2,52 @@ package lookup
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
-	"github.com/netsec-ethz/scion-apps/pkg/appnet"
+	"github.com/netsec-ethz/scion-apps/pkg/pan"
+	"github.com/netsys-lab/scion-path-discovery/scionhost"
 	"github.com/scionproto/scion/go/lib/snet"
 )
 
 // This wraps the usage of appnet to query paths
 // May later be put into an interface or struct
 func PathLookup(peer string) ([]snet.Path, error) {
-	udpAddr, err := appnet.ResolveUDPAddr(peer)
+	host := scionhost.Host()
+	udpAddr, err := pan.ResolveUDPAddr(peer)
 	if err != nil {
 		return nil, err
 	}
-	paths, err := appnet.DefNetwork().PathQuerier.Query(context.Background(), udpAddr.IA)
-	if err != nil {
-		return nil, err
-	}
+	return host.QueryPaths(context.Background(), udpAddr.IA)
+}
 
-	return paths, nil
+func PathToString(path snet.Path) string {
+	if path == nil {
+		return ""
+	}
+	intfs := path.Metadata().Interfaces
+	if len(intfs) == 0 {
+		return fmt.Sprintf("%s", path)
+	}
+	var hops []string
+	intf := intfs[0]
+	hops = append(hops, fmt.Sprintf("%s %s",
+		intf.IA,
+		intf.ID,
+	))
+	for i := 1; i < len(intfs)-1; i += 2 {
+		inIntf := intfs[i]
+		outIntf := intfs[i+1]
+		hops = append(hops, fmt.Sprintf("%s %s %s",
+			inIntf.ID,
+			inIntf.IA,
+			outIntf.ID,
+		))
+	}
+	intf = intfs[len(intfs)-1]
+	hops = append(hops, fmt.Sprintf("%s %s",
+		intf.ID,
+		intf.IA,
+	))
+	return fmt.Sprintf("[%s]", strings.Join(hops, ">"))
 }

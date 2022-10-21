@@ -7,15 +7,8 @@ import (
 )
 
 type ConnectOptions struct {
-	SendAddrPacket          bool
-	DontWaitForIncoming     bool
-	NoPeriodicPathSelection bool
-	NoMetricsCollection     bool
-}
-
-type SockOptions struct {
-	PathSelectionResponsibility string
-	MultiportMode               bool
+	SendAddrPacket      bool
+	NoMetricsCollection bool
 }
 
 type DialOptions struct {
@@ -23,11 +16,23 @@ type DialOptions struct {
 	NumPaths       int
 }
 
+type DialPacket struct {
+	Addr snet.UDPAddr
+	Path snet.Path
+}
+
+type HandshakePacket struct {
+	Addr     snet.UDPAddr
+	NumPorts int
+	Ports    []int
+}
+
 type UnderlaySocket interface {
 	Listen() error
+	Local() *snet.UDPAddr
+	AggregateMetrics() *packets.PathMetrics
 	WaitForDialIn() (*snet.UDPAddr, error)
-	WaitForIncomingConn() (packets.UDPConn, error)
-	Dial(remote snet.UDPAddr, path snet.Path, options DialOptions, i int) (packets.UDPConn, error)
+	WaitForIncomingConn(snet.UDPAddr) (packets.UDPConn, error)
 	DialAll(remote snet.UDPAddr, path []pathselection.PathQuality, options DialOptions) ([]packets.UDPConn, error)
 	CloseAll() []error
 	GetConnections() []packets.UDPConn

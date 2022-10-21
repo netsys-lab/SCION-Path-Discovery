@@ -19,7 +19,7 @@ func Test_SCIONSocket(t *testing.T) {
 	})
 
 	t.Run("SCIONSocket Listen And Dial", func(t *testing.T) {
-		sock := NewSCIONSocket("1-ff00:0:110,[127.0.0.12]:21000")
+		sock := NewSCIONSocket("1-ff00:0:110,[127.0.0.12]:31001")
 		err := sock.Listen()
 		if err != nil {
 			t.Error(err)
@@ -35,7 +35,7 @@ func Test_SCIONSocket(t *testing.T) {
 		}
 
 		go func() {
-			paths, err := lookup.PathLookup("1-ff00:0:110,[127.0.0.12]:21000")
+			paths, err := lookup.PathLookup("1-ff00:0:110,[127.0.0.12]:31001")
 			if err != nil {
 				t.Error(err)
 				return
@@ -48,8 +48,8 @@ func Test_SCIONSocket(t *testing.T) {
 
 			pathQualities := make([]pathselection.PathQuality, 1)
 			pathQualities[0] = pathselection.PathQuality{
-				Id:   "FirstPath",
-				Path: paths[0],
+				Id:       "FirstPath",
+				SnetPath: paths[0],
 			}
 
 			sock2.DialAll(*sock.localAddr, pathQualities, DialOptions{SendAddrPacket: true})

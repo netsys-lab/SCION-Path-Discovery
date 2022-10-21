@@ -67,19 +67,10 @@ func (c *BasicConn) GetState() int {
 
 type UDPConn interface {
 	net.Conn
-	Listen(snet.UDPAddr) error
-	Dial(snet.UDPAddr, *snet.Path) error
-	GetState() int
 	GetMetrics() *PathMetrics
 	GetPath() *snet.Path
+	SetPath(*snet.Path) error
 	GetRemote() *snet.UDPAddr
-	SetLocal(snet.UDPAddr)
-	WriteStream([]byte) (int, error)
-	ReadStream([]byte) (int, error)
-	GetType() int
-	GetId() string
-	SetId(string)
-	MarkAsClosed() error
 }
 
 type TransportConstructor func() UDPConn
