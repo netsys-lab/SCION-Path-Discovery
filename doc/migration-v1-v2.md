@@ -20,14 +20,12 @@ As explained before, the periodical path-selection has some implications. Furthe
 
 Consequently, we decided to remove the `CustomPathSelection` interface and replace it with the path-selection approaches shown above. However, we provide predefined path-selection approaches, i.e. our improved disjoint path-selection, as structs that can be used in combination with the PanSocket to implement path-selection in a straight forward way.
 
-### Remove API for SCIONConnection
-Tbd.
 
 ## Internal Changes
 The following points are internal changes, that may affect the behavior of the library, but are not visible to application developers.
 
 ### Upgrade to scion-apps/pan library
-One of the core contributions of version 2.0 is the internal usage of the scion-apps/pkg/pan library. It provides a stable and well designed interface to implement SCION applications, which we use to provide our path-aware features on top of. In version 1.x, connection dialing/listening, SCION address parsing and many other things were done manually, with not up-to-date versions of external libraries. By moving to pan, we could update these libraries and avoid boilerplate code.
+One of the core contributions of version 2.0 is the internal usage of the [scion-apps/pkg/pan](https://github.com/netsec-ethz/scion-apps/tree/master/pkg/pan) library. It provides a stable and well designed interface to implement SCION applications, which we use to provide our path-aware features on top of. In version 1.x, connection dialing/listening, SCION address parsing and many other things were done manually, with not up-to-date versions of external libraries. By moving to pan, we could update these libraries and avoid boilerplate code.
 
 ### Bidirectional Handshake to establish Connections
 In version 1.x, we sometimes observed that especially SCION/QUIC connections were not established properly. We found out, that quic-go opens streams over the network not when calling `OpenStream`, but when the first data is sent over the stream. This lead to different states in the waiting and connecting socket, and in worst case to some connections that were not usable. In version 2.0, we introduce an explicit handshake over each connection, where the connecting socket sends a handshake packet over each connection and the waiting socket responds with a handshake packet over each connection, to fix exactly this problem.
