@@ -59,7 +59,7 @@ We propose to enhance our SCION multipath library with a partially disjoint path
   - We expect the proposed extensions to significantly increase the performance of our SCION multipath library by leveraging unused network capacities. 
   - Finally, we anticipate that our refined path selection approach contributes significant additional insights in the field of path-aware networking. 
   - Consequently, we plan to implement and evaluate the proposed path selection algorithm in the next step, in combination with revisiting our multipath library API and performing bug fixes.
-- This task is completed in [release v2.0.0](https://github.com/netsys-lab/scion-path-discovery/releases/tag/v.2.0.0-rc1)
+- This task is completed in [release v2.0.0](https://github.com/netsys-lab/scion-path-discovery/releases/tag/v.2.0.0)
 
 ### Further Resources
 - [Implementation](api/disjoint.go) of the partially disjoint path selection
