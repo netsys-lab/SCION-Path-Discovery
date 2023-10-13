@@ -1,7 +1,10 @@
 package socket
 
 import (
+	"context"
+	"errors"
 	"testing"
+	"time"
 
 	lookup "github.com/netsys-lab/scion-path-discovery/pathlookup"
 	"github.com/netsys-lab/scion-path-discovery/pathselection"
@@ -61,6 +64,24 @@ func Test_QUICSocket(t *testing.T) {
 		}
 		sock.CloseAll()
 		sock2.CloseAll()
+	})
+
+	t.Run("QUICSocket Listen And Contextualized Wait For Dial", func(t *testing.T) {
+		sock := NewQUICSocket("1-ff00:0:110,[127.0.0.12]:41000", &SockOptions{PathSelectionResponsibility: "server"})
+		err := sock.Listen()
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		defer sock.CloseAll()
+
+		ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now())
+		defer cancelFunc()
+		_, err = sock.WaitForDialInWithContext(ctx)
+		if err != nil && !errors.Is(err, context.DeadlineExceeded) {
+			t.Error(err)
+			return
+		}
 	})
 
 }
