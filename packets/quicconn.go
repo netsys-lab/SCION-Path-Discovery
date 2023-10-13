@@ -244,6 +244,24 @@ func (qc *QUICReliableConn) AcceptStream() (quic.Stream, error) {
 	return stream, nil
 }
 
+func (qc *QUICReliableConn) AcceptStreamWithContext(ctx context.Context) (quic.Stream, error) {
+	log.Debugf("Accepting on quic %s", qc.listener.Addr())
+	session, err := qc.listener.Accept(ctx)
+	if err != nil {
+		return nil, err
+	}
+	log.Debugf("Got session on quic %s", qc.listener.Addr())
+
+	stream, err := session.AcceptStream(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// qc.internalConn = stream
+
+	return stream, nil
+}
+
 func (qc *QUICReliableConn) Listen(addr snet.UDPAddr) error {
 	qc.Ready = make(chan bool, 0)
 	udpAddr := net.UDPAddr{

@@ -2,6 +2,7 @@ package socket
 
 import (
 	"bytes"
+	"context"
 	"encoding/gob"
 
 	"github.com/netsys-lab/scion-path-discovery/packets"
@@ -72,6 +73,11 @@ func (s *SCIONSocket) WaitForDialIn() (*snet.UDPAddr, error) {
 	addr := p.Addr
 
 	return &addr, nil
+}
+
+func (s *SCIONSocket) WaitForDialInWithContext(ctx context.Context) (*snet.UDPAddr, error) {
+	//TODO implement context support for SCION socket
+	panic("implement SCIONSocket.WaitForDialInWithContext(context.Context)")
 }
 
 func (s *SCIONSocket) Dial(remote snet.UDPAddr, path snet.Path, options DialOptions, i int) (packets.UDPConn, error) {
