@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/gob"
+	"os"
+	"time"
 
 	"github.com/netsys-lab/scion-path-discovery/packets"
 	"github.com/netsys-lab/scion-path-discovery/pathselection"
@@ -76,8 +78,31 @@ func (s *SCIONSocket) WaitForDialIn() (*snet.UDPAddr, error) {
 }
 
 func (s *SCIONSocket) WaitForDialInWithContext(ctx context.Context) (*snet.UDPAddr, error) {
-	//TODO implement context support for SCION socket
-	panic("implement SCIONSocket.WaitForDialInWithContext(context.Context)")
+	for {
+		deadline, hasDeadline := ctx.Deadline()
+		var err error
+		if hasDeadline {
+			err = s.connections[0].SetReadDeadline(deadline)
+		} else {
+			err = s.connections[0].SetDeadline(time.Now().Add(5 * time.Second))
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		addr, err := s.WaitForDialIn()
+		if err == nil {
+			return addr, nil
+		} else if !os.IsTimeout(err) {
+			return nil, err
+		}
+
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+
 }
 
 func (s *SCIONSocket) Dial(remote snet.UDPAddr, path snet.Path, options DialOptions, i int) (packets.UDPConn, error) {
