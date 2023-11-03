@@ -1,6 +1,7 @@
 package socket
 
 import (
+	"context"
 	"github.com/netsys-lab/scion-path-discovery/packets"
 	"github.com/netsys-lab/scion-path-discovery/pathselection"
 	"github.com/scionproto/scion/go/lib/snet"
@@ -26,6 +27,7 @@ type DialOptions struct {
 type UnderlaySocket interface {
 	Listen() error
 	WaitForDialIn() (*snet.UDPAddr, error)
+	WaitForDialInWithContext(ctx context.Context) (*snet.UDPAddr, error)
 	WaitForIncomingConn() (packets.UDPConn, error)
 	Dial(remote snet.UDPAddr, path snet.Path, options DialOptions, i int) (packets.UDPConn, error)
 	DialAll(remote snet.UDPAddr, path []pathselection.PathQuality, options DialOptions) ([]packets.UDPConn, error)

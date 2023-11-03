@@ -2,6 +2,7 @@ package socket
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"encoding/base32"
 	"encoding/gob"
@@ -140,6 +141,48 @@ func (s *QUICSocket) WaitForDialIn() (*snet.UDPAddr, error) {
 	bts := make([]byte, packets.PACKET_SIZE)
 	log.Debugf("Wait for Dial In")
 	stream, err := s.listenConns[0].AcceptStream()
+	if err != nil {
+		return nil, err
+	}
+
+	s.listenConns[0].SetStream(stream)
+
+	select {
+	case s.listenConns[0].Ready <- true:
+	default:
+	}
+
+	_, err = stream.Read(bts)
+	if err != nil {
+		return nil, err
+	}
+	p := DialPacketQuic{}
+	network := bytes.NewBuffer(bts) // Stand-in for a network connection
+	dec := gob.NewDecoder(network)
+	err = dec.Decode(&p)
+	if err != nil {
+		return nil, err
+	}
+
+	s.listenConns[0].SetRemote(&p.Addr)
+	log.Debugf("Waiting for %d more connections", p.NumPaths-1)
+
+	for i := 1; i < p.NumPaths; i++ {
+		_, err := s.WaitForIncomingConn()
+		if err != nil {
+			return nil, err
+		}
+		log.Debugf("Dialed In %d of %d", i, p.NumPaths)
+	}
+
+	addr := p.Addr
+	return &addr, nil
+}
+
+func (s *QUICSocket) WaitForDialInWithContext(ctx context.Context) (*snet.UDPAddr, error) {
+	bts := make([]byte, packets.PACKET_SIZE)
+	log.Debugf("Wait for Dial In")
+	stream, err := s.listenConns[0].AcceptStreamWithContext(ctx)
 	if err != nil {
 		return nil, err
 	}

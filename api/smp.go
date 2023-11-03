@@ -1,6 +1,7 @@
 package smp
 
 import (
+	"context"
 	"time"
 
 	"github.com/netsys-lab/scion-path-discovery/packets"
@@ -475,4 +476,12 @@ func (l *MPListener) Listen() error {
 // That dials back to the incoming socket
 func (l *MPListener) WaitForMPPeerSockConnect() (*snet.UDPAddr, error) {
 	return l.socket.WaitForDialIn()
+}
+
+// Waits for new incoming MPPeerSocks
+// Should be called in a loop
+// Using the returned addr, a new MPPeerSock can be instantiated
+// That dials back to the incoming socket
+func (l *MPListener) WaitForMPPeerSockConnectWithContext(ctx context.Context) (*snet.UDPAddr, error) {
+	return l.socket.WaitForDialInWithContext(ctx)
 }
