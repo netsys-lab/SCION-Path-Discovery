@@ -137,6 +137,70 @@ func (s *QUICSocket) WaitForIncomingConn() (packets.UDPConn, error) {
 	}
 }
 
+func (s *QUICSocket) WaitForIncomingConnWithContext(ctx context.Context) (packets.UDPConn, error) {
+	if s.options == nil || !s.options.MultiportMode {
+		log.Debugf("Waiting for new connection")
+		stream, err := s.listenConns[0].AcceptStreamWithContext(ctx)
+		if err != nil {
+			log.Fatalf("QUIC Accept err %s", err.Error())
+		}
+
+		log.Debugf("Accepted new Stream on listen socket")
+
+		bts := make([]byte, packets.PACKET_SIZE)
+		_, err = stream.Read(bts)
+
+		if s.listenConns[0].GetInternalConn() == nil {
+			s.listenConns[0].SetStream(stream)
+			select {
+			case s.listenConns[0].Ready <- true:
+			default:
+			}
+
+			return s.listenConns[0], nil
+		} else {
+			newConn := &packets.QUICReliableConn{}
+			id := RandStringBytes(32)
+			newConn.SetId(id)
+			newConn.SetLocal(*s.localAddr)
+			newConn.SetRemote(s.listenConns[0].GetRemote())
+			newConn.SetStream(stream)
+			s.listenConns = append(s.listenConns, newConn)
+
+			_, err = stream.Read(bts)
+			if err != nil {
+				return nil, err
+			}
+			return newConn, nil
+		}
+	} else {
+		addr := s.localAddr.Copy()
+		addr.Host.Port = s.localAddr.Host.Port + len(s.listenConns)
+		conn := &packets.QUICReliableConn{}
+		err := conn.Listen(*addr)
+		if err != nil {
+			return nil, err
+		}
+
+		stream, err := conn.AcceptStreamWithContext(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		id := RandStringBytes(32)
+		conn.SetId(id)
+
+		conn.SetStream(stream)
+		s.listenConns = append(s.listenConns, conn)
+		bts := make([]byte, packets.PACKET_SIZE)
+		_, err = stream.Read(bts)
+		if err != nil {
+			return nil, err
+		}
+		return conn, nil
+	}
+}
+
 func (s *QUICSocket) WaitForDialIn() (*snet.UDPAddr, error) {
 	bts := make([]byte, packets.PACKET_SIZE)
 	log.Debugf("Wait for Dial In")
@@ -210,7 +274,7 @@ func (s *QUICSocket) WaitForDialInWithContext(ctx context.Context) (*snet.UDPAdd
 	log.Debugf("Waiting for %d more connections", p.NumPaths-1)
 
 	for i := 1; i < p.NumPaths; i++ {
-		_, err := s.WaitForIncomingConn()
+		_, err := s.WaitForIncomingConnWithContext(ctx)
 		if err != nil {
 			return nil, err
 		}

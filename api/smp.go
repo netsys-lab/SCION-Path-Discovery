@@ -207,6 +207,66 @@ func (mp *MPPeerSock) WaitForPeerConnect(sel pathselection.CustomPathSelection) 
 	return remote, err
 }
 
+//
+// This method waits until a remote MPPeerSock calls connect to this
+// socket's local address
+// A pathselection may be passed, which lets the socket dialing back to its remote
+// (e.g. for server-side path selection)
+// Since the MPPeerSock waits for only one incoming connection to determine a new peer
+// it starts waiting for other connections (if no selection passed) and fires the
+// OnConnectionsChange event for each new incoming connection
+//
+func (mp *MPPeerSock) WaitForPeerConnectWithContext(ctx context.Context, sel pathselection.CustomPathSelection) (*snet.UDPAddr, error) {
+	log.Debugf("Waiting for incoming connection")
+	remote, err := mp.UnderlaySocket.WaitForDialInWithContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	log.Debugf("Accepted connection from %s", remote.String())
+	mp.Peer = remote
+	mp.selection = sel
+	// Start selection process -> will update DB
+	mp.StartPathSelection(sel, sel == nil)
+	log.Debugf("Done path selection")
+	// wait until first signal on channel
+	// selectedPathSet := <-mp.OnPathsetChange
+	// time.Sleep(1 * time.Second)
+	// dial all paths selected by user algorithm
+	if sel != nil {
+		err = mp.DialAll(mp.SelectedPathSet, &socket.ConnectOptions{
+			SendAddrPacket: false,
+		})
+		mp.collectMetrics()
+	} else {
+		mp.collectMetrics()
+		go func() {
+			conns := mp.UnderlaySocket.GetConnections()
+			mp.PacketScheduler.SetConnections(conns)
+			mp.PathQualityDB.SetConnections(conns)
+			mp.connectionSetChange(conns)
+			for {
+				log.Debugf("Waiting for new connections...")
+				conn, err := mp.UnderlaySocket.WaitForIncomingConnWithContext(ctx)
+				if conn == nil && err == nil {
+					log.Debugf("Socket does not implement WaitForIncomingConn, stopping here...")
+					return
+				}
+				if err != nil {
+					log.Errorf("Failed to wait for incoming connection %s", err.Error())
+					return
+				}
+
+				conns := mp.UnderlaySocket.GetConnections()
+				mp.PacketScheduler.SetConnections(conns)
+				mp.PathQualityDB.SetConnections(conns)
+				mp.connectionSetChange(conns)
+			}
+		}()
+	}
+
+	return remote, err
+}
+
 func (mp *MPPeerSock) collectMetrics() {
 	mp.metricsTicker = time.NewTicker(mp.MetricsInterval)
 	go func() {

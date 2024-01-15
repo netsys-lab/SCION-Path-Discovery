@@ -140,6 +140,10 @@ func (s *SCIONSocket) WaitForIncomingConn() (packets.UDPConn, error) {
 	return nil, nil
 }
 
+func (s *SCIONSocket) WaitForIncomingConnWithContext(ctx context.Context) (packets.UDPConn, error) {
+	return nil, nil
+}
+
 func (s *SCIONSocket) DialAll(remote snet.UDPAddr, path []pathselection.PathQuality, options DialOptions) ([]packets.UDPConn, error) {
 	// There is always one listening connection
 	conns := make([]packets.UDPConn, 1)

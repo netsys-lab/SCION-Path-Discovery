@@ -29,6 +29,7 @@ type UnderlaySocket interface {
 	WaitForDialIn() (*snet.UDPAddr, error)
 	WaitForDialInWithContext(ctx context.Context) (*snet.UDPAddr, error)
 	WaitForIncomingConn() (packets.UDPConn, error)
+	WaitForIncomingConnWithContext(ctx context.Context) (packets.UDPConn, error)
 	Dial(remote snet.UDPAddr, path snet.Path, options DialOptions, i int) (packets.UDPConn, error)
 	DialAll(remote snet.UDPAddr, path []pathselection.PathQuality, options DialOptions) ([]packets.UDPConn, error)
 	CloseAll() []error
